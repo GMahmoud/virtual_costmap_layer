@@ -6,7 +6,7 @@ find_package(catkin REQUIRED
   costmap_2d
   dynamic_reconfigure
   custom_msgs
- 
+  tf
 )
 
 include(CheckCXXCompilerFlag)
@@ -27,7 +27,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES VirtualLayer
-  CATKIN_DEPENDS costmap_2d dynamic_reconfigure custom_msgs
+  CATKIN_DEPENDS costmap_2d dynamic_reconfigure custom_msgs tf
   DEPENDS
 )
 

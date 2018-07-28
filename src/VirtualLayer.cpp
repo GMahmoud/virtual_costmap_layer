@@ -23,6 +23,8 @@ void VirtualLayer::onInitialize()
   current_ = true;
   one_zone_ = true;
   clear_obstacles_ = true;
+  base_frame_ = "base_link";
+  map_frame_ = "map";
   dsrv_ = new dynamic_reconfigure::Server<VirtualLayerConfig>(nh);
   dynamic_reconfigure::Server<VirtualLayerConfig>::CallbackType cb =
       boost::bind(&VirtualLayer::reconfigureCB, this, _1, _2);
@@ -59,6 +61,8 @@ void VirtualLayer::reconfigureCB(VirtualLayerConfig &config, uint32_t level)
   enabled_ = config.enabled;
   one_zone_ = config.one_zone;
   clear_obstacles_ = config.clear_obstacles;
+  base_frame_ = config.base_frame;
+  map_frame_ = config.map_frame;
 }
 
 void VirtualLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
@@ -376,6 +380,13 @@ void VirtualLayer::zoneCallback(const custom_msgs::ZoneConstPtr &zone_msg)
     {
       vector_to_add.push_back(zone_msg->area.form[i]);
     }
+
+    if(!robotInZone(vector_to_add))
+    {
+      ROS_WARN_STREAM(tag_ << "Robot point is not the navigation zone");
+      return;
+    }
+
     if (one_zone_)
     {
       zone_polygons_.clear();
@@ -469,6 +480,28 @@ void VirtualLayer::obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacl
   computeMapBounds();
 }
 
+bool VirtualLayer::robotInZone(std::vector<geometry_msgs::Point> points)
+{
+  if (!one_zone_)
+  {
+    ROS_WARN_STREAM(tag_ << "Multiple zones can be defined. No need to check robot point");
+    return true;
+  }
+
+  geometry_msgs::Point point = getRobotPoint();
+  int i, j, size = points.size();
+  bool ret_val = false;
+
+  for (i = 0, j = size - 1; i < size; j = i++)
+  {
+    if (((points[i].y > point.y) != (points[j].y > point.y)) &&
+        (point.x < (points[j].x - points[i].x) * (point.y - points[i].y) / (points[j].y - points[i].y) + points[i].x))
+      ret_val = !ret_val;
+  }
+
+  return ret_val;
+}
+
 // load polygones, lines and points out of the rosparam server
 bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::string &param)
 {
@@ -481,7 +514,7 @@ bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::
 
   if (nh->getParam(param, param_yaml))
   {
-    if (param_yaml.getType() == XmlRpc::XmlRpcValue::TypeArray) 
+    if (param_yaml.getType() == XmlRpc::XmlRpcValue::TypeArray)
     {
       for (int i = 0; i < param_yaml.size(); ++i)
       {
@@ -608,4 +641,32 @@ bool VirtualLayer::getPoint(XmlRpc::XmlRpcValue &val, geometry_msgs::Point &poin
   }
 }
 
+geometry_msgs::Point VirtualLayer::getRobotPoint()
+{
+  tf::TransformListener tfListener;
+  geometry_msgs::PoseStamped current_robot_pose, current_robot_pose_base;
+  geometry_msgs::Point robot_point;
+  geometry_msgs::TransformStamped current_transform_msg;
+  tf::StampedTransform current_transform_tf;
+  try
+  {
+    ros::Time now = ros::Time(0);
+    tfListener.waitForTransform(map_frame_, base_frame_, now, ros::Duration(1.0));
+    now = ros::Time::now();
+    tfListener.getLatestCommonTime(map_frame_, base_frame_, now, NULL);
+    current_robot_pose_base.header.stamp = now;
+    current_robot_pose_base.header.frame_id = base_frame_;
+    current_robot_pose_base.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+
+    tfListener.transformPose(map_frame_, current_robot_pose_base, current_robot_pose);
+    robot_point.x = current_robot_pose.pose.position.x;
+    robot_point.y = current_robot_pose.pose.position.y;
+    robot_point.z = 0.0;
+  }
+  catch (tf::TransformException &ex)
+  {
+    ROS_DEBUG_STREAM(tag_ << "Can't get robot pose: " << ex.what());
+  }
+  return robot_point;
+}
 } // namespace virtual_costmap_layer

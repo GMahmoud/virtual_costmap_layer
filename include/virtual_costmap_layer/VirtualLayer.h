@@ -6,6 +6,7 @@
 #include <tf/transform_datatypes.h>
 #include <mutex>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <stdlib.h>
 #include <ros/ros.h>
 #include <costmap_2d/layer.h>
@@ -13,7 +14,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <unordered_map>
 #include <pluginlib/class_list_macros.h>
-
+#include <tf/transform_listener.h>
 #include <custom_msgs/Zone.h>
 #include <custom_msgs/Obstacle.h>
 #include "virtual_costmap_layer/VirtualLayerConfig.h"
@@ -158,10 +159,22 @@ private:
   void obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacle_msg);
 
   /**
+   * @brief checks if the robot point is in the polygon to define as zone
+   * 
+   * @param ponts          list of the points
+   *
+   * @remarks works only for one zone otherwise returns true
+   * 
+   * @return bool       true if the robot is in the zone
+   *                    false if it isn't
+   */
+  bool robotInZone(std::vector<geometry_msgs::Point> points);
+
+  /**
    * @brief reads the forms in YAML-Format from the
    * ROS parameter server in the namespace of this plugin
    * 
-   * @param nh     pointer to the ros-Node handle
+   * @param nh          pointer to the ros-Node handle
    * @param param       name of the parameter where the
    *                    prohibition areas saved in YAML format
    *
@@ -182,19 +195,27 @@ private:
  */
   bool getPoint(XmlRpc::XmlRpcValue &val, geometry_msgs::Point &point);
 
+  /**
+ * @brief gets a current geometry_msgs::Point of the robot
+ *
+ * @return Geometry_msgs::Point      current pose
+ */
+  geometry_msgs::Point getRobotPoint();
+
   std::string tag_;
-  dynamic_reconfigure::Server<VirtualLayerConfig> *dsrv_;                //!< dynamic_reconfigure server for the costmap
+  dynamic_reconfigure::Server<VirtualLayerConfig> *dsrv_;               //!< dynamic_reconfigure server for the costmap
   std::mutex data_mutex_;                                               //!< mutex for the accessing _prohibition_points and _prohibition_polygons
   double costmap_resolution_;                                           //!< resolution of the overlayed costmap to create the thinnest line out of two points
   bool one_zone_, clear_obstacles_;                                     //!< put in memory previous zones and obstacles if false
+  std::string base_frame_;                                              //!< base frame of the robot by default "base_link"
+  std::string map_frame_;                                               //!< map frame by default "map"
   std::vector<geometry_msgs::Point> obstacle_points_;                   //!< vector to save the obstacle points in source coordinates
   std::vector<std::vector<geometry_msgs::Point>> zone_polygons_;        //!< vector to save the zone polygons (more than 3 edges) in source coordinates
-  std::vector<std::vector<geometry_msgs::Point>> obstacle_polygons_;    //!< vector to save the obstacle polygons (including lines) in source coordinates   
+  std::vector<std::vector<geometry_msgs::Point>> obstacle_polygons_;    //!< vector to save the obstacle polygons (including lines) in source coordinates
   std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons; //!< vector to save the form polygons (including lines) in source coordinates
   std::vector<geometry_msgs::Point> _prohibition_points;                //!< vector to save the form points in source coordinates
   double _min_x, _min_y, _max_x, _max_y;                                //!< cached map bounds
   std::vector<ros::Subscriber> subs_;                                   //!< vector to save all ros subscribers
-  
 };
 } // namespace virtual_costmap_layer
 
