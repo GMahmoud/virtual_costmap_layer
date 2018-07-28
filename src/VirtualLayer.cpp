@@ -35,7 +35,7 @@ void VirtualLayer::onInitialize()
   // set initial bounds
   _min_x = _min_y = _max_x = _max_y = 0;
 
-// reading the defined topics out of the namespace of this plugin!
+  // reading the defined topics out of the namespace of this plugin!
   std::string topics_param = "zone_topics";
   if (!parseTopicsFromYaml(&nh, topics_param))
     ROS_ERROR_STREAM(tag_ << "Reading topic names from '" << nh.getNamespace() << "/" << topics_param << "' failed!");
@@ -46,7 +46,7 @@ void VirtualLayer::onInitialize()
   // reading the defined forms out of the namespace of this plugin!
   std::string params = "forms";
   if (!parseProhibitionListFromYaml(&nh, params))
-    ROS_ERROR_STREAM(tag_ << "Reading prohibition areas from '" << nh.getNamespace() << "/" << params << "' failed!");
+    ROS_ERROR_STREAM(tag_ << "Reading forms from '" << nh.getNamespace() << "/" << params << "' failed!");
 
   // compute map bounds for the current set of prohibition areas.
   computeMapBounds();
@@ -346,7 +346,6 @@ bool VirtualLayer::parseTopicsFromYaml(ros::NodeHandle *nh, const std::string &p
         }
         ROS_WARN_STREAM(tag_ << "Topic name " << topic_name);
 
-        //callback_ = boost::bind(&VirtualLayer::processMsg, this, _1);
         if (param == "zone_topics")
         {
           subs_.push_back(nh->subscribe(topic_name, 100, &VirtualLayer::zoneCallback, this));
@@ -404,8 +403,26 @@ void VirtualLayer::obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacl
     std::vector<geometry_msgs::Point> vector_to_add;
     if (obstacle_msg->list[i].form.size() == 1)
     {
-      ROS_INFO_STREAM(tag_ << "Adding a Point");
-      obstacle_points_.push_back(obstacle_msg->list[i].form[0]);
+      if (obstacle_msg->list[i].form[0].z == 0.0)
+      {
+        ROS_INFO_STREAM(tag_ << "Adding a Point");
+        obstacle_points_.push_back(obstacle_msg->list[i].form[0]);
+      }
+      else if (obstacle_msg->list[i].form[0].z > 0.0)
+      {
+        ROS_INFO_STREAM(tag_ << "Adding a Circle");
+        // Loop over 36 angles around a circle making a point each time
+        int N = 36;
+        geometry_msgs::Point pt;
+        for (int j = 0; j < N; ++j)
+        {
+          double angle = j * 2 * M_PI / N;
+          pt.x = obstacle_msg->list[i].form[0].x + cos(angle) * obstacle_msg->list[i].form[0].z;
+          pt.y = obstacle_msg->list[i].form[0].y + sin(angle) * obstacle_msg->list[i].form[0].z;
+          vector_to_add.push_back(pt);
+        }
+        obstacle_polygons_.push_back(vector_to_add);
+      }
     }
     else if (obstacle_msg->list[i].form.size() == 2)
     {
@@ -449,6 +466,7 @@ void VirtualLayer::obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacl
       obstacle_polygons_.push_back(vector_to_add);
     }
   }
+  computeMapBounds();
 }
 
 // load polygones, lines and points out of the rosparam server
@@ -463,19 +481,13 @@ bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::
 
   if (nh->getParam(param, param_yaml))
   {
-    if (param_yaml.getType() == XmlRpc::XmlRpcValue::TypeArray) // list of goals
+    if (param_yaml.getType() == XmlRpc::XmlRpcValue::TypeArray) 
     {
       for (int i = 0; i < param_yaml.size(); ++i)
       {
         if (param_yaml[i].getType() == XmlRpc::XmlRpcValue::TypeArray)
         {
           std::vector<geometry_msgs::Point> vector_to_add;
-
-          /* **************************************
-           * differ between points and polygons
-           * lines get to a polygon with the resolution
-           * of the costmap
-           **************************************** */
 
           // add a point
           if (param_yaml[i].size() == 1)

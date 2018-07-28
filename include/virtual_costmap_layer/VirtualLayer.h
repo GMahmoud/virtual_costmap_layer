@@ -189,7 +189,7 @@ private:
   bool one_zone_, clear_obstacles_;                                     //!< put in memory previous zones and obstacles if false
   std::vector<geometry_msgs::Point> obstacle_points_;                   //!< vector to save the obstacle points in source coordinates
   std::vector<std::vector<geometry_msgs::Point>> zone_polygons_;        //!< vector to save the zone polygons (more than 3 edges) in source coordinates
-  std::vector<std::vector<geometry_msgs::Point>> obstacle_polygons_;    //!< vector to save the obstacle polygons (including lines) in source coordinates
+  std::vector<std::vector<geometry_msgs::Point>> obstacle_polygons_;    //!< vector to save the obstacle polygons (including lines) in source coordinates   
   std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons; //!< vector to save the form polygons (including lines) in source coordinates
   std::vector<geometry_msgs::Point> _prohibition_points;                //!< vector to save the form points in source coordinates
   double _min_x, _min_y, _max_x, _max_y;                                //!< cached map bounds
