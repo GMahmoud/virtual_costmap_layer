@@ -356,7 +356,7 @@ bool VirtualLayer::parseTopicsFromYaml(ros::NodeHandle *nh, const std::string &p
         }
         else if (param == "obstacle_topics")
         {
-          subs_.push_back(nh->subscribe(topic_name, 100, &VirtualLayer::obstacleCallback, this));
+          subs_.push_back(nh->subscribe(topic_name, 100, &VirtualLayer::obstaclesCallback, this));
         }
 
         ROS_INFO_STREAM(tag_ << "Subscribed to topic " << subs_.back().getTopic().c_str());
@@ -401,7 +401,7 @@ void VirtualLayer::zoneCallback(const custom_msgs::ZoneConstPtr &zone_msg)
   }
 }
 
-void VirtualLayer::obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacle_msg)
+void VirtualLayer::obstaclesCallback(const custom_msgs::ObstaclesConstPtr &obstacles_msg)
 {
   if (clear_obstacles_)
   {
@@ -409,17 +409,17 @@ void VirtualLayer::obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacl
     obstacle_points_.clear();
   }
 
-  for (int i = 0; i < obstacle_msg->list.size(); ++i)
+  for (int i = 0; i < obstacles_msg->list.size(); ++i)
   {
     std::vector<geometry_msgs::Point> vector_to_add;
-    if (obstacle_msg->list[i].form.size() == 1)
+    if (obstacles_msg->list[i].form.size() == 1)
     {
-      if (obstacle_msg->list[i].form[0].z == 0.0)
+      if (obstacles_msg->list[i].form[0].z == 0.0)
       {
         ROS_INFO_STREAM(tag_ << "Adding a Point");
-        obstacle_points_.push_back(obstacle_msg->list[i].form[0]);
+        obstacle_points_.push_back(obstacles_msg->list[i].form[0]);
       }
-      else if (obstacle_msg->list[i].form[0].z > 0.0)
+      else if (obstacles_msg->list[i].form[0].z > 0.0)
       {
         ROS_INFO_STREAM(tag_ << "Adding a Circle");
         // Loop over 36 angles around a circle making a point each time
@@ -428,19 +428,19 @@ void VirtualLayer::obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacl
         for (int j = 0; j < N; ++j)
         {
           double angle = j * 2 * M_PI / N;
-          pt.x = obstacle_msg->list[i].form[0].x + cos(angle) * obstacle_msg->list[i].form[0].z;
-          pt.y = obstacle_msg->list[i].form[0].y + sin(angle) * obstacle_msg->list[i].form[0].z;
+          pt.x = obstacles_msg->list[i].form[0].x + cos(angle) * obstacles_msg->list[i].form[0].z;
+          pt.y = obstacles_msg->list[i].form[0].y + sin(angle) * obstacles_msg->list[i].form[0].z;
           vector_to_add.push_back(pt);
         }
         obstacle_polygons_.push_back(vector_to_add);
       }
     }
-    else if (obstacle_msg->list[i].form.size() == 2)
+    else if (obstacles_msg->list[i].form.size() == 2)
     {
       ROS_INFO_STREAM(tag_ << "Adding a Line");
 
-      geometry_msgs::Point point_A = obstacle_msg->list[i].form[0];
-      geometry_msgs::Point point_B = obstacle_msg->list[i].form[1];
+      geometry_msgs::Point point_A = obstacles_msg->list[i].form[0];
+      geometry_msgs::Point point_B = obstacles_msg->list[i].form[1];
       vector_to_add.push_back(point_A);
       vector_to_add.push_back(point_B);
 
@@ -470,9 +470,9 @@ void VirtualLayer::obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacl
     else
     {
       ROS_INFO_STREAM(tag_ << "Adding a Polygon");
-      for (int j = 0; j < obstacle_msg->list[i].form.size(); ++j)
+      for (int j = 0; j < obstacles_msg->list[i].form.size(); ++j)
       {
-        vector_to_add.push_back(obstacle_msg->list[i].form[j]);
+        vector_to_add.push_back(obstacles_msg->list[i].form[j]);
       }
       obstacle_polygons_.push_back(vector_to_add);
     }

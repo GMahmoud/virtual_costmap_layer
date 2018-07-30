@@ -16,7 +16,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <tf/transform_listener.h>
 #include <custom_msgs/Zone.h>
-#include <custom_msgs/Obstacle.h>
+#include <custom_msgs/Obstacles.h>
 #include "virtual_costmap_layer/VirtualLayerConfig.h"
 
 namespace virtual_costmap_layer
@@ -156,7 +156,7 @@ private:
   /**
    * @brief obstacle callback function
    */
-  void obstacleCallback(const custom_msgs::ObstacleConstPtr &obstacle_msg);
+  void obstaclesCallback(const custom_msgs::ObstaclesConstPtr &obstacles_msg);
 
   /**
    * @brief checks if the robot point is in the polygon to define as zone
