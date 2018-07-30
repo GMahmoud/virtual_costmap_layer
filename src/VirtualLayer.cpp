@@ -47,10 +47,10 @@ void VirtualLayer::onInitialize()
 
   // reading the defined forms out of the namespace of this plugin!
   std::string params = "forms";
-  if (!parseProhibitionListFromYaml(&nh, params))
+  if (!parseFormListFromYaml(&nh, params))
     ROS_ERROR_STREAM(tag_ << "Reading forms from '" << nh.getNamespace() << "/" << params << "' failed!");
 
-  // compute map bounds for the current set of prohibition areas.
+  // compute map bounds for the current set of areas and obstacles.
   computeMapBounds();
 
   ROS_INFO_STREAM(tag_ << "VirtualLayer initialized.");
@@ -503,7 +503,7 @@ bool VirtualLayer::robotInZone(std::vector<geometry_msgs::Point> points)
 }
 
 // load polygones, lines and points out of the rosparam server
-bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::string &param)
+bool VirtualLayer::parseFormListFromYaml(ros::NodeHandle *nh, const std::string &param)
 {
   std::lock_guard<std::mutex> l(data_mutex_);
   std::unordered_map<std::string, geometry_msgs::Pose> map_out;
@@ -527,7 +527,7 @@ bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::
           {
             geometry_msgs::Point point;
             ret_val = getPoint(param_yaml[i][0], point);
-            _prohibition_points.push_back(point);
+            form_points_.push_back(point);
           }
           // add a line
           else if (param_yaml[i].size() == 2)
@@ -538,7 +538,7 @@ bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::
               // add a lonely point
               geometry_msgs::Point point;
               ret_val = getPoint(param_yaml[i], point);
-              _prohibition_points.push_back(point);
+              form_points_.push_back(point);
             }
             else
             {
@@ -572,7 +572,7 @@ bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::
               point.y = point_B.y + point_N.y;
               vector_to_add.push_back(point);
 
-              _prohibition_polygons.push_back(vector_to_add);
+              form_polygons_.push_back(vector_to_add);
             }
           }
           // add a point or add a polygon
@@ -585,7 +585,7 @@ bool VirtualLayer::parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::
               ret_val = getPoint(param_yaml[i][j], point);
               vector_to_add.push_back(point);
             }
-            _prohibition_polygons.push_back(vector_to_add);
+            form_polygons_.push_back(vector_to_add);
           }
         }
         else

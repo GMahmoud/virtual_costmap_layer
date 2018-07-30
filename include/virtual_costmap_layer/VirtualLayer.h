@@ -176,12 +176,12 @@ private:
    * 
    * @param nh          pointer to the ros-Node handle
    * @param param       name of the parameter where the
-   *                    prohibition areas saved in YAML format
+   *                    forms saved in YAML format
    *
    * @return bool       true if the parsing was successful
    *                    false if it wasn't
    */
-  bool parseProhibitionListFromYaml(ros::NodeHandle *nh, const std::string &param);
+  bool parseFormListFromYaml(ros::NodeHandle *nh, const std::string &param);
 
   /**
  * @brief gets a geometry_msgs::Point from a YAML-Array
@@ -203,19 +203,19 @@ private:
   geometry_msgs::Point getRobotPoint();
 
   std::string tag_;
-  dynamic_reconfigure::Server<VirtualLayerConfig> *dsrv_;               //!< dynamic_reconfigure server for the costmap
-  std::mutex data_mutex_;                                               //!< mutex for the accessing _prohibition_points and _prohibition_polygons
-  double costmap_resolution_;                                           //!< resolution of the overlayed costmap to create the thinnest line out of two points
-  bool one_zone_, clear_obstacles_;                                     //!< put in memory previous zones and obstacles if false
-  std::string base_frame_;                                              //!< base frame of the robot by default "base_link"
-  std::string map_frame_;                                               //!< map frame by default "map"
-  std::vector<geometry_msgs::Point> obstacle_points_;                   //!< vector to save the obstacle points in source coordinates
-  std::vector<std::vector<geometry_msgs::Point>> zone_polygons_;        //!< vector to save the zone polygons (more than 3 edges) in source coordinates
-  std::vector<std::vector<geometry_msgs::Point>> obstacle_polygons_;    //!< vector to save the obstacle polygons (including lines) in source coordinates
-  std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons; //!< vector to save the form polygons (including lines) in source coordinates
-  std::vector<geometry_msgs::Point> _prohibition_points;                //!< vector to save the form points in source coordinates
-  double _min_x, _min_y, _max_x, _max_y;                                //!< cached map bounds
-  std::vector<ros::Subscriber> subs_;                                   //!< vector to save all ros subscribers
+  dynamic_reconfigure::Server<VirtualLayerConfig> *dsrv_;            //!< dynamic_reconfigure server for the costmap
+  std::mutex data_mutex_;                                            //!< mutex for the accessing forms
+  double costmap_resolution_;                                        //!< resolution of the overlayed costmap to create the thinnest line out of two points
+  bool one_zone_, clear_obstacles_;                                  //!< put in memory previous zones and obstacles if false
+  std::string base_frame_;                                           //!< base frame of the robot by default "base_link"
+  std::string map_frame_;                                            //!< map frame by default "map"
+  std::vector<geometry_msgs::Point> obstacle_points_;                //!< vector to save the obstacle points in source coordinates
+  std::vector<std::vector<geometry_msgs::Point>> zone_polygons_;     //!< vector to save the zone polygons (more than 3 edges) in source coordinates
+  std::vector<std::vector<geometry_msgs::Point>> obstacle_polygons_; //!< vector to save the obstacle polygons (including lines) in source coordinates
+  std::vector<std::vector<geometry_msgs::Point>> form_polygons_;     //!< vector to save the form polygons (including lines) in source coordinates
+  std::vector<geometry_msgs::Point> form_points_;                    //!< vector to save the form points in source coordinates
+  double _min_x, _min_y, _max_x, _max_y;                             //!< cached map bounds
+  std::vector<ros::Subscriber> subs_;                                //!< vector to save all ros subscribers
 };
 } // namespace virtual_costmap_layer
 

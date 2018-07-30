@@ -1,6 +1,6 @@
 # virtual_costmap_layer
 
-This package includes a plugin to add a virtual layer of obstacles and to define a navigation zone to the 2D costmap. 
+This package includes a plugin to add a virtual layer of obstacles and to define a navigation zone in the 2D costmap. 
 The user can define several geometric forms (point, line, circle, polygon) in the map frame.   
 
 1. **Point**: geometry_msgs::Point [x, y, z=0]
