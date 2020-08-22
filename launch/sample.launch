@@ -1,0 +1,36 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="map_to_odom" args="0 0 0 0 0 0 map odom 100" />
+    <node pkg="tf" type="static_transform_publisher" name="odom_to_base" args="0 1 0 0 0 0 odom base_footprint 100" />
+    <!--- Run the map_server node -->
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find virtual_costmap_layer)/samples/map/map.yaml"/>
+    <!--- Run the rviz node -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find virtual_costmap_layer)/samples/rviz/sample.rviz" respawn="true"/>
+    <!--- Run the move base node -->
+    
+    <arg name="odom_frame_id" default="odom"/>
+    <arg name="base_frame_id" default="base_footprint"/>
+    <arg name="global_frame_id" default="map"/>
+    
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" launch-prefix="gdb -ex run --args">
+        <rosparam file="$(find virtual_costmap_layer)/samples/move_base/common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find virtual_costmap_layer)/samples/move_base/common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find virtual_costmap_layer)/samples/move_base/local_params.yaml"  command="load" />
+        <rosparam file="$(find virtual_costmap_layer)/samples/move_base/global_params.yaml"  command="load" />
+
+        <!-- <rosparam file="$(find bo_navigation)/cfg/dwa/dwa_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find bo_navigation)/cfg/dwa/global_planner_params.yaml" command="load" />
+        <rosparam file="$(find bo_navigation)/cfg/dwa/navfn_global_planner_params.yaml" command="load" />
+        <param name="base_global_planner" value="navfn/NavfnROS" />
+        <param name="planner_frequency" value="1.0" />
+        <param name="planner_patience" value="5.0" />
+        <param name="base_local_planner" type="string" value="dwa_local_planner/DWAPlannerROS" />
+        <param name="controller_frequency" value="5.0" />
+        <param name="controller_patience" value="3.0" />
+        <param name="global_costmap/global_frame" value="map"/>
+        <param name="global_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
+        <param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/>
+        <param name="local_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
+        <param name="DWAPlannerROS/global_frame_id" value="$(arg odom_frame_id)"/>
+        <remap from="cmd_vel" to="/my_cmd_vel" /> -->
+    </node>
+</launch>
