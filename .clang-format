@@ -1,0 +1,23 @@
+### https://zed0.co.uk/clang-format-configurator/ ###
+Language: Cpp
+IndentWidth: 4
+ColumnLimit: 0
+NamespaceIndentation: Inner
+AccessModifierOffset: -2
+CompactNamespaces: true
+BreakConstructorInitializers: AfterColon
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeCpp11BracedList: true
+IndentCaseLabels: true
+BraceWrapping:
+  AfterClass: false
+  AfterFunction: true
+  SplitEmptyFunction: false
+  IndentBraces: false
+BreakBeforeBraces: Custom
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlignAfterOpenBracket: Align
+PointerAlignment: Left

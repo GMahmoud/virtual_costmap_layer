@@ -68,7 +68,7 @@ void VirtualLayer::onInitialize()
 
 // ---------------------------------------------------------------------
 
-void VirtualLayer::parseTopicsFromYaml(ros::NodeHandle &nh, const std::string &param)
+void VirtualLayer::parseTopicsFromYaml(ros::NodeHandle& nh, const std::string& param)
 {
     XmlRpc::XmlRpcValue param_yaml;
     if (nh.getParam(param, param_yaml)) {
@@ -107,7 +107,7 @@ void VirtualLayer::parseTopicsFromYaml(ros::NodeHandle &nh, const std::string &p
 // ---------------------------------------------------------------------
 
 // load polygones, lines and points out of the rosparam server
-void VirtualLayer::parseFormListFromYaml(const ros::NodeHandle &nh, const std::string &param)
+void VirtualLayer::parseFormListFromYaml(const ros::NodeHandle& nh, const std::string& param)
 {
     XmlRpc::XmlRpcValue param_yaml;
     if (nh.getParam(param, param_yaml)) {
@@ -198,12 +198,12 @@ void VirtualLayer::parseFormListFromYaml(const ros::NodeHandle &nh, const std::s
 // ---------------------------------------------------------------------
 
 // get a point out of the XML Type into a geometry_msgs::Point
-void VirtualLayer::convert(const XmlRpc::XmlRpcValue &val, geometry_msgs::Point &point)
+void VirtualLayer::convert(const XmlRpc::XmlRpcValue& val, geometry_msgs::Point& point)
 {
     try {
         // check if there a two values for the coordinate
         if (val.getType() == XmlRpc::XmlRpcValue::TypeArray && val.size() == 2) {
-            auto convDouble = [](const XmlRpc::XmlRpcValue &val) -> double {
+            auto convDouble = [](const XmlRpc::XmlRpcValue& val) -> double {
                 auto val_copy = val;
                 if (val_copy.getType() == XmlRpc::XmlRpcValue::TypeInt) // XmlRpc cannot cast int to double
                 {
@@ -220,7 +220,7 @@ void VirtualLayer::convert(const XmlRpc::XmlRpcValue &val, geometry_msgs::Point 
             ROS_ERROR_STREAM(tag << "a point has to contain two double values");
             throw std::runtime_error("a point has to contain two double values");
         }
-    } catch (const XmlRpc::XmlRpcException &ex) {
+    } catch (const XmlRpc::XmlRpcException& ex) {
         ROS_ERROR_STREAM(tag << "could not convert point: [" << ex.getMessage() << "]");
         throw std::runtime_error("could not convert point: [" + ex.getMessage() + "]");
     }
@@ -228,7 +228,7 @@ void VirtualLayer::convert(const XmlRpc::XmlRpcValue &val, geometry_msgs::Point 
 
 // ---------------------------------------------------------------------
 
-bool VirtualLayer::robotInZone(const Polygon &zone)
+bool VirtualLayer::robotInZone(const Polygon& zone)
 {
     if (!_one_zone_mode) {
         ROS_WARN_STREAM(tag << "could be applied only for one_zone_mode");
@@ -252,7 +252,7 @@ bool VirtualLayer::robotInZone(const Polygon &zone)
 
 // ---------------------------------------------------------------------
 
-void VirtualLayer::reconfigureCb(VirtualLayerConfig &config, uint32_t level)
+void VirtualLayer::reconfigureCb(VirtualLayerConfig& config, uint32_t level)
 {
     enabled_ = config.enabled;
     _one_zone_mode = config.one_zone;
@@ -262,7 +262,7 @@ void VirtualLayer::reconfigureCb(VirtualLayerConfig &config, uint32_t level)
 }
 
 void VirtualLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
-                                double *min_x, double *min_y, double *max_x, double *max_y)
+                                double* min_x, double* min_y, double* max_x, double* max_y)
 {
     if (!enabled_) {
         return;
@@ -280,7 +280,7 @@ void VirtualLayer::updateBounds(double robot_x, double robot_y, double robot_yaw
     *max_y = std::max(*max_y, _max_y);
 }
 
-void VirtualLayer::updateCosts(costmap_2d::Costmap2D &master_grid, int min_i, int min_j, int max_i, int max_j)
+void VirtualLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
 {
     if (!enabled_) {
         return;
@@ -350,7 +350,7 @@ void VirtualLayer::computeMapBounds()
     }
 }
 
-void VirtualLayer::setPolygonCost(costmap_2d::Costmap2D &master_grid, const Polygon &polygon, unsigned char cost,
+void VirtualLayer::setPolygonCost(costmap_2d::Costmap2D& master_grid, const Polygon& polygon, unsigned char cost,
                                   int min_i, int min_j, int max_i, int max_j, bool fill_polygon)
 {
     std::vector<PointInt> map_polygon;
@@ -378,7 +378,7 @@ void VirtualLayer::setPolygonCost(costmap_2d::Costmap2D &master_grid, const Poly
     }
 }
 
-void VirtualLayer::polygonOutlineCells(const std::vector<PointInt> &polygon, std::vector<PointInt> &polygon_cells)
+void VirtualLayer::polygonOutlineCells(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells)
 {
     for (unsigned int i = 0; i < polygon.size() - 1; ++i) {
         raytrace(polygon[i].x, polygon[i].y, polygon[i + 1].x, polygon[i + 1].y, polygon_cells);
@@ -390,7 +390,7 @@ void VirtualLayer::polygonOutlineCells(const std::vector<PointInt> &polygon, std
     }
 }
 
-void VirtualLayer::raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt> &cells)
+void VirtualLayer::raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells)
 {
     int dx = abs(x1 - x0);
     int dy = abs(y1 - y0);
@@ -417,7 +417,7 @@ void VirtualLayer::raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt
     }
 }
 
-void VirtualLayer::rasterizePolygon(const std::vector<PointInt> &polygon, std::vector<PointInt> &polygon_cells, bool fill)
+void VirtualLayer::rasterizePolygon(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells, bool fill)
 {
     // this implementation is a slighly modified version of Costmap2D::convexFillCells(...)
 
@@ -484,7 +484,7 @@ void VirtualLayer::rasterizePolygon(const std::vector<PointInt> &polygon, std::v
     }
 }
 
-void VirtualLayer::zoneCallback(const custom_msgs::ZoneConstPtr &zone_msg)
+void VirtualLayer::zoneCallback(const virtual_costmap_layer::ZoneConstPtr& zone_msg)
 {
     if (zone_msg->area.form.size() > 2) {
         Polygon vector_to_add;
@@ -508,7 +508,7 @@ void VirtualLayer::zoneCallback(const custom_msgs::ZoneConstPtr &zone_msg)
     }
 }
 
-void VirtualLayer::obstaclesCallback(const custom_msgs::ObstaclesConstPtr &obstacles_msg)
+void VirtualLayer::obstaclesCallback(const virtual_costmap_layer::ObstaclesConstPtr& obstacles_msg)
 {
     if (_clear_obstacles) {
         _obstacle_polygons.clear();
@@ -595,7 +595,7 @@ geometry_msgs::Point VirtualLayer::getRobotPoint()
         robot_point.x = current_robot_pose.pose.position.x;
         robot_point.y = current_robot_pose.pose.position.y;
         robot_point.z = 0.0;
-    } catch (tf::TransformException &ex) {
+    } catch (tf::TransformException& ex) {
         ROS_DEBUG_STREAM(tag << "Can't get robot pose: " << ex.what());
     }
     return robot_point;
