@@ -70,6 +70,7 @@ void VirtualLayer::onInitialize()
     _remove_server = nh.advertiseService("remove", &VirtualLayer::removeElement, this);
     _get_server = nh.advertiseService("get", &VirtualLayer::getElement, this);
     _status_server = nh.advertiseService("status", &VirtualLayer::getElements, this);
+    _clear_server = nh.advertiseService("clear", &VirtualLayer::clear, this);
 
     _geometries.insert(std::make_pair(GeometryType::LINESTRING, std::map<std::string, Geometry>()));
     _geometries.insert(std::make_pair(GeometryType::POLYGON, std::map<std::string, Geometry>()));
@@ -223,6 +224,58 @@ bool VirtualLayer::addElement(virtual_costmap_layer::AddElementRequest& req, vir
 
 bool VirtualLayer::removeElement(virtual_costmap_layer::RemoveElementRequest& req, virtual_costmap_layer::RemoveElementResponse& res)
 {
+    bool deleted = false;
+
+    auto process = [this, &deleted, &req](GeometryType type) {
+        if (_geometries[type].find(req.uuid) != _geometries[type].end()) {
+            deleted = true;
+            _geometries[type].erase(req.uuid);
+        }
+    };
+
+    process(GeometryType::LINESTRING);
+    if (deleted) {
+        res.success = true;
+        return true;
+    }
+
+    process(GeometryType::POLYGON);
+    if (deleted) {
+        res.success = true;
+        return true;
+    }
+
+    process(GeometryType::RING);
+    if (deleted) {
+        res.success = true;
+        return true;
+    }
+
+    process(GeometryType::CIRCLE);
+    if (deleted) {
+        res.success = true;
+        return true;
+    } else {
+        res.success = false;
+        res.message = "No element with the given uuid";
+        return true;
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------
+
+bool VirtualLayer::clear(std_srvs::TriggerRequest& req, std_srvs::TriggerResponse& res)
+{
+
+    ROS_INFO_STREAM(tag << "Clearing layer");
+    _geometries[GeometryType::LINESTRING].clear();
+    _geometries[GeometryType::POLYGON].clear();
+    _geometries[GeometryType::RING].clear();
+    _geometries[GeometryType::CIRCLE].clear();
+
+    res.success = true;
     return true;
 }
 

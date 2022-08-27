@@ -27,6 +27,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/Point.h>
 #include <ros/ros.h>
+#include <std_srvs/Trigger.h>
 
 namespace virtual_costmap_layer {
 
@@ -123,6 +124,11 @@ class VirtualLayer : public costmap_2d::Layer {
     /// \param res         service response
     bool removeElement(virtual_costmap_layer::RemoveElementRequest& req, virtual_costmap_layer::RemoveElementResponse& res);
 
+    /// \brief             clear virtual costmap layer
+    /// \param req         service request
+    /// \param res         service response
+    bool clear(std_srvs::TriggerRequest& req, std_srvs::TriggerResponse& res);
+
     /// \brief             get element in virtual costmap layer
     /// \param req         service request
     /// \param res         service response
@@ -168,6 +174,7 @@ class VirtualLayer : public costmap_2d::Layer {
     ros::ServiceServer _remove_server; // RPC service to remove element
     ros::ServiceServer _get_server;    // RPC service to get element
     ros::ServiceServer _status_server; // RPC service to get elements
+    ros::ServiceServer _clear_server;  // RPC service to clear layer
 };
 
 } // namespace virtual_costmap_layer

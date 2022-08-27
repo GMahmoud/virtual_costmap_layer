@@ -43,7 +43,8 @@ find_package(catkin REQUIRED
              costmap_2d
              dynamic_reconfigure
              tf
-             geometry_msgs)
+             geometry_msgs
+             std_srvs)
 
 # ##############################################################################
 # Generate messages and configurations
@@ -80,7 +81,8 @@ catkin_package(INCLUDE_DIRS
                costmap_2d
                dynamic_reconfigure
                tf
-               geometry_msgs)
+               geometry_msgs
+               std_srvs)
 
 # ##############################################################################
 # Generate library and executables
