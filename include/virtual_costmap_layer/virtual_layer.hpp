@@ -6,11 +6,14 @@
 #pragma once
 
 #include <virtual_costmap_layer/AddElement.h>
+#include <virtual_costmap_layer/Form.h>
 #include <virtual_costmap_layer/GetElement.h>
+#include <virtual_costmap_layer/GetElements.h>
 #include <virtual_costmap_layer/RemoveElement.h>
 #include <virtual_costmap_layer/VirtualLayerConfig.h>
 #include <virtual_costmap_layer/geometries.hpp>
 
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -125,6 +128,11 @@ class VirtualLayer : public costmap_2d::Layer {
     /// \param res         service response
     bool getElement(virtual_costmap_layer::GetElementRequest& req, virtual_costmap_layer::GetElementResponse& res);
 
+    /// \brief             get elements in virtual costmap layer
+    /// \param req         service request
+    /// \param res         service response
+    bool getElements(virtual_costmap_layer::GetElementsRequest& req, virtual_costmap_layer::GetElementsResponse& res);
+
     /// \brief             save linestring element type in virtual costmap layer geometries
     /// \param linestring  linestring data
     /// \return uuid of element
@@ -134,6 +142,16 @@ class VirtualLayer : public costmap_2d::Layer {
     /// \param polygon     polygon data
     /// \return uuid of element
     std::string savePolygonGeometry(const rgk::core::Polygon& polygon);
+
+    /// \brief             convert a geometry element to a form message
+    /// \param geometry    geometry element
+    /// \param type        geometry type
+    /// \return the form message
+    Form toForm(const Geometry& geometry, GeometryType type) const;
+
+    /// \brief             convert all geometry elements to a vector of form message
+    /// \return form message vector
+    std::vector<Form> toForms() const;
 
     std::shared_ptr<dynamic_reconfigure::Server<VirtualLayerConfig>> _dsrv; // dynamic_reconfigure server for the costmap
     std::mutex _data_mutex;                                                 // mutex for the accessing forms
@@ -149,6 +167,7 @@ class VirtualLayer : public costmap_2d::Layer {
     ros::ServiceServer _add_server;    // RPC service to add element
     ros::ServiceServer _remove_server; // RPC service to remove element
     ros::ServiceServer _get_server;    // RPC service to get element
+    ros::ServiceServer _status_server; // RPC service to get elements
 };
 
 } // namespace virtual_costmap_layer

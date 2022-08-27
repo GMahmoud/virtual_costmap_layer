@@ -3,7 +3,9 @@
 // Proprietary and confidential
 // Written by MG <mahmoud.ghorbel@hotmail.com>
 
-#include "virtual_costmap_layer/virtual_layer.hpp"
+#include <sstream>
+
+#include <virtual_costmap_layer/virtual_layer.hpp>
 
 #include <boost/geometry.hpp>
 #include <boost/uuid/random_generator.hpp>
@@ -67,6 +69,7 @@ void VirtualLayer::onInitialize()
     _add_server = nh.advertiseService("add", &VirtualLayer::addElement, this);
     _remove_server = nh.advertiseService("remove", &VirtualLayer::removeElement, this);
     _get_server = nh.advertiseService("get", &VirtualLayer::getElement, this);
+    _status_server = nh.advertiseService("status", &VirtualLayer::getElements, this);
 
     _geometries.insert(std::make_pair(GeometryType::LINESTRING, std::map<std::string, Geometry>()));
     _geometries.insert(std::make_pair(GeometryType::POLYGON, std::map<std::string, Geometry>()));
@@ -100,6 +103,50 @@ bool VirtualLayer::removeElement(virtual_costmap_layer::RemoveElementRequest& re
 
 bool VirtualLayer::getElement(virtual_costmap_layer::GetElementRequest& req, virtual_costmap_layer::GetElementResponse& res)
 {
+    bool found = false;
+
+    auto process = [this, &found, &req, &res](GeometryType type) {
+        if (_geometries[type].find(req.uuid) != _geometries[type].end()) {
+            found = true;
+            res.form = toForm(_geometries[type][req.uuid], type);
+            res.form.uuid = req.uuid;
+        }
+    };
+
+    process(GeometryType::LINESTRING);
+    if (found) {
+        res.success = true;
+        return true;
+    }
+
+    process(GeometryType::POLYGON);
+    if (found) {
+        res.success = true;
+        return true;
+    }
+
+    process(GeometryType::RING);
+    if (found) {
+        res.success = true;
+        return true;
+    }
+
+    process(GeometryType::CIRCLE);
+    if (found) {
+        res.success = true;
+        return true;
+    } else {
+        res.success = false;
+        res.message = "No element with the given uuid";
+        return true;
+    }
+}
+
+// ---------------------------------------------------------------------
+
+bool VirtualLayer::getElements(virtual_costmap_layer::GetElementsRequest& req, virtual_costmap_layer::GetElementsResponse& res)
+{
+    res.forms = toForms();
     return true;
 }
 
@@ -181,7 +228,7 @@ std::string VirtualLayer::saveLineStringGeometry(const rgk::core::LineString& li
     geometry._linestring = linestring;
     ROS_INFO_STREAM(tag << "Adding LineString [uuid: " << uuid << "]");
     _geometries[GeometryType::LINESTRING].insert(std::make_pair(uuid, geometry));
-    
+
     return uuid;
 }
 
@@ -205,6 +252,76 @@ std::string VirtualLayer::savePolygonGeometry(const rgk::core::Polygon& polygon)
     }
 
     return uuid;
+}
+
+// ---------------------------------------------------------------------
+
+virtual_costmap_layer::Form VirtualLayer::toForm(const Geometry& geometry, GeometryType type) const
+{
+    virtual_costmap_layer::Form form;
+    switch (type) {
+        case GeometryType::LINESTRING: {
+            form.type = virtual_costmap_layer::Form::TYPE_LINESTRING;
+            std::stringstream ss;
+            ss << boost::geometry::wkt(geometry._linestring.value());
+            form.data = ss.str();
+            form.description = "TYPE_LINESTRING";
+        } break;
+
+        case GeometryType::POLYGON: {
+            form.type = virtual_costmap_layer::Form::TYPE_POLYGON;
+            std::stringstream ss;
+            ss << boost::geometry::wkt(geometry._polygon.value());
+            form.data = ss.str();
+            form.description = "TYPE_POLYGON";
+        } break;
+
+        case GeometryType::RING: {
+            form.type = virtual_costmap_layer::Form::TYPE_RING;
+            rgk::core::Polygon polygon;
+            polygon.inners().reserve(1);
+            polygon.inners().push_back(geometry._ring.value());
+            std::stringstream ss;
+            ss << boost::geometry::wkt(polygon);
+            form.data = ss.str();
+            form.description = "TYPE_RING";
+        } break;
+
+        case GeometryType::CIRCLE:
+            // form.type = virtual_costmap_layer::Form::TYPE_CIRCLE;
+            // form.data=
+            break;
+    }
+
+    return form;
+}
+
+// ---------------------------------------------------------------------
+
+std::vector<virtual_costmap_layer::Form> VirtualLayer::toForms() const
+{
+    auto size = _geometries.at(GeometryType::LINESTRING).size() +
+                _geometries.at(GeometryType::POLYGON).size() +
+                _geometries.at(GeometryType::RING).size() +
+                _geometries.at(GeometryType::CIRCLE).size();
+
+    std::vector<virtual_costmap_layer::Form> forms;
+    forms.reserve(size);
+
+    auto process = [this, &forms](GeometryType type) {
+        for (const auto& pair : _geometries.at(type)) {
+            auto form = toForm(pair.second, type);
+            form.uuid = pair.first;
+            forms.push_back(form);
+        }
+    };
+
+    process(GeometryType::LINESTRING);
+    process(GeometryType::POLYGON);
+    process(GeometryType::RING);
+    process(GeometryType::CIRCLE);
+
+    return forms;
 }
 
 // ---------------------------------------------------------------------

@@ -62,6 +62,7 @@ add_message_files(FILES
 add_service_files(FILES
                   AddElement.srv
                   GetElement.srv
+                  GetElements.srv
                   RemoveElement.srv)
 
 generate_messages(DEPENDENCIES
