@@ -55,7 +55,6 @@ add_message_files(FILES
                   Circle.msg
                   Form.msg
                   LineString.msg
-                  Obstacles.msg
                   Polygon.msg
                   Ring.msg)
 

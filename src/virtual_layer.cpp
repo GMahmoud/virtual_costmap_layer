@@ -89,6 +89,133 @@ void VirtualLayer::onInitialize()
 
 bool VirtualLayer::addElement(virtual_costmap_layer::AddElementRequest& req, virtual_costmap_layer::AddElementResponse& res)
 {
+    GeometryType type;
+    switch (req.form.type) {
+        case virtual_costmap_layer::Form::TYPE_LINESTRING:
+            type = GeometryType::LINESTRING;
+            break;
+        case virtual_costmap_layer::Form::TYPE_POLYGON:
+            type = GeometryType::POLYGON;
+            break;
+        case virtual_costmap_layer::Form::TYPE_RING:
+            type = GeometryType::RING;
+            break;
+        case virtual_costmap_layer::Form::TYPE_CIRCLE:
+            type = GeometryType::CIRCLE;
+            break;
+        default:
+            res.success = false;
+            res.message = "Unsupported type request (" + std::to_string(req.form.type) + ")";
+            return true;
+    }
+
+    switch (type) {
+        case GeometryType::LINESTRING: {
+            auto has_form = req.form.data.find("LINESTRING");
+            if (has_form != std::string::npos) {
+                rgk::core::LineString linestring;
+                try {
+                    boost::geometry::read_wkt(req.form.data, linestring);
+                } catch (...) {
+                    res.success = false;
+                    res.message = "Add element failed: [reason: request data corrupted]";
+                    ROS_WARN_STREAM(tag << res.message);
+                    return true;
+                }
+                boost::geometry::correct(linestring);
+                if (linestring.empty()) {
+                    res.success = false;
+                    res.message = "Add element failed: [reason: request data empty]";
+                    ROS_WARN_STREAM(tag << res.message);
+                    return true;
+                }
+                const auto uuid = saveLineStringGeometry(linestring);
+                res.success = true;
+                res.uuid = uuid;
+            } else {
+                res.success = false;
+                res.message = "Add element failed: [reason: request data corrupted]";
+                ROS_WARN_STREAM(tag << res.message);
+                return true;
+            }
+        } break;
+
+        case GeometryType::POLYGON: {
+            auto has_form = req.form.data.find("POLYGON");
+            if (has_form != std::string::npos) {
+                rgk::core::Polygon polygon;
+                try {
+                    boost::geometry::read_wkt(req.form.data, polygon);
+                } catch (...) {
+                    res.success = false;
+                    res.message = "Add element failed: [reason: request data corrupted]";
+                    ROS_WARN_STREAM(tag << res.message);
+                    return true;
+                }
+                boost::geometry::correct(polygon);
+                if (polygon.outer().empty() && polygon.inners().empty()) {
+                    res.success = false;
+                    res.message = "Add element failed: [reason: request data empty]";
+                    ROS_WARN_STREAM(tag << res.message);
+                    return true;
+                }
+
+                const auto uuid = savePolygonGeometry(polygon);
+                res.success = true;
+                res.uuid = uuid;
+            } else {
+                res.success = false;
+                res.message = "Add element failed: [reason: request data corrupted]";
+                ROS_WARN_STREAM(tag << res.message);
+                return true;
+            }
+        } break;
+
+        case GeometryType::RING: {
+            auto has_form = req.form.data.find("POLYGON");
+            if (has_form != std::string::npos) {
+                rgk::core::Polygon polygon;
+                try {
+                    boost::geometry::read_wkt(req.form.data, polygon);
+                } catch (...) {
+                    res.success = false;
+                    res.message = "Add element failed: [reason: request data corrupted]";
+                    ROS_WARN_STREAM(tag << res.message);
+                    return true;
+                }
+                boost::geometry::correct(polygon);
+                if (polygon.outer().empty() && polygon.inners().empty()) {
+                    res.success = false;
+                    res.message = "Add element failed: [reason: request data empty]";
+                    ROS_WARN_STREAM(tag << res.message);
+                    return true;
+                }
+
+                if (!polygon.outer().empty() || polygon.inners().size() != 1) {
+                    res.success = false;
+                    res.message = "Add element failed: [reason: request data mismatched ring type]";
+                    ROS_WARN_STREAM(tag << res.message);
+                    return true;
+                }
+
+                const auto uuid = savePolygonGeometry(polygon);
+                res.success = true;
+                res.uuid = uuid;
+            } else {
+                res.success = false;
+                res.message = "Add element failed: [reason: request data corrupted]";
+                ROS_WARN_STREAM(tag << res.message);
+                return true;
+            }
+        } break;
+
+        case GeometryType::CIRCLE:
+            res.success = false;
+            res.message = "Circle type not implemented yet";
+            ROS_WARN_STREAM(tag << res.message);
+            return true;
+    }
+
     return true;
 }
 
@@ -328,11 +455,9 @@ std::vector<virtual_costmap_layer::Form> VirtualLayer::toForms() const
 
 void VirtualLayer::reconfigureCb(VirtualLayerConfig& config, uint32_t level)
 {
-    // enabled_ = config.enabled;
-    // _one_zone_mode = config.one_zone;
-    // _clear_obstacles = config.clear_obstacles;
-    // _base_frame = config.base_frame;
-    // _map_frame = config.map_frame;
+    enabled_ = config.enabled;
+    _base_frame = config.base_frame;
+    _map_frame = config.map_frame;
 }
 
 void VirtualLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
