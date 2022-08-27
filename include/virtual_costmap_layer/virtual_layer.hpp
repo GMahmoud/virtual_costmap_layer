@@ -75,7 +75,7 @@ class VirtualLayer : public costmap_2d::Layer {
     ///        the result is stored in class members _min_x, _min_y, _max_x and _max_y.
     void computeMapBounds();
 
-    /// \brief                set cost in a Costmap2D for a polygon (polygon may be located outside bounds)
+    /// \brief                set cost in a Costmap2D for a ring (ring may be located outside bounds)
     /// \param grid           reference to the Costmap2D object
     /// \param ring           ring (in world coordinates)
     /// \param cost           the cost value to be set (0,255)
@@ -90,12 +90,31 @@ class VirtualLayer : public costmap_2d::Layer {
                      int min_i, int min_j, int max_i, int max_j,
                      bool fill) const;
 
+    /// \brief                set cost in a Costmap2D for a linestring (linestring may be located outside bounds)
+    /// \param grid           reference to the Costmap2D object
+    /// \param linestring     linestring (in world coordinates)
+    /// \param cost           the cost value to be set (0,255)
+    /// \param min_i          minimum bound on the horizontal map index/coordinate
+    /// \param min_j          minimum bound on the vertical map index/coordinate
+    /// \param max_i          maximum bound on the horizontal map index/coordinate
+    /// \param max_j          maximum bound on the vertical map index/coordinate
+    void setLineStringCost(costmap_2d::Costmap2D& grid,
+                           const rgk::core::LineString& linestring,
+                           unsigned char cost,
+                           int min_i, int min_j, int max_i, int max_j) const;
+
     /// \brief                converts ring (in map coordinates) to a set of cells in the map
     /// \note                 this method is mainly based on Costmap2D::convexFillCells() but accounts for a self - implemented polygonOutlineCells() method and allows negative map coordinates
     /// \param ring           ring (in map coordinates)
     /// \param fill           If true, the interior of the polygon will be considered as well
     /// \param[out] cells     new cells in map coordinates are pushed back on this container
     void rasterize(const std::vector<PointInt>& ring, std::vector<PointInt>& cells, bool fill) const;
+
+    /// \brief                converts linestring (in map coordinates) to a set of cells in the map
+    /// \note                 this method is mainly based on Costmap2D::convexFillCells() but accounts for a self - implemented polygonOutlineCells() method and allows negative map coordinates
+    /// \param linestring     linestring (in map coordinates)
+    /// \param[out] cells     new cells in map coordinates are pushed back on this container
+    void rasterize(const std::vector<PointInt>& linestring, std::vector<PointInt>& cells) const;
 
     /// \brief                     extracts the boundary of a polygon in terms of map cells
     /// \note                      this method is based on Costmap2D::polygonOutlineCells() but accounts for a self - implemented raytrace algorithm and allows negative map coordinates

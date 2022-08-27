@@ -82,8 +82,6 @@ void VirtualLayer::onInitialize()
 
     // compute map bounds for the current set of areas and obstacles.
     computeMapBounds();
-
-    // ROS_INFO_STREAM(tag << "layer is initialized: [points: " << _form_points.size() << "] [polygons: " << _form_polygons.size() << "]");
 }
 
 // ---------------------------------------------------------------------
@@ -332,7 +330,6 @@ bool VirtualLayer::getElements(virtual_costmap_layer::GetElementsRequest& req, v
 
 // ---------------------------------------------------------------------
 
-// load forms from ymal configuration
 void VirtualLayer::parseFormListFromYaml(const ros::NodeHandle& nh)
 {
     XmlRpc::XmlRpcValue param_yaml;
@@ -564,19 +561,20 @@ void VirtualLayer::updateCosts(costmap_2d::Costmap2D& grid, int min_i, int min_j
         }
     }
 
-    // // set costs of obstacle polygons
-    // for (int i = 0; i < _obstacle_polygons.size(); ++i) {
-    //     setPolygonCost(master_grid, _obstacle_polygons[i], costmap_2d::LETHAL_OBSTACLE, min_i, min_j, max_i, max_j, true);
-    // }
+    // set costs of rings
+    for (const auto& pair : _geometries[GeometryType::RING]) {
+        setRingCost(grid, pair.second._ring.value(),
+                    costmap_2d::LETHAL_OBSTACLE,
+                    min_i, min_j, max_i, max_j,
+                    true);
+    }
 
-    // // set cost of obstacle points
-    // for (int i = 0; i < _obstacle_points.size(); ++i) {
-    //     unsigned int mx;
-    //     unsigned int my;
-    //     if (master_grid.worldToMap(_obstacle_points[i].x, _obstacle_points[i].y, mx, my)) {
-    //         master_grid.setCost(mx, my, costmap_2d::LETHAL_OBSTACLE);
-    //     }
-    // }
+    // set costs of linestrings
+    for (const auto& pair : _geometries[GeometryType::LINESTRING]) {
+        setLineStringCost(grid, pair.second._linestring.value(),
+                          costmap_2d::LETHAL_OBSTACLE,
+                          min_i, min_j, max_i, max_j);
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -599,6 +597,40 @@ void VirtualLayer::setRingCost(costmap_2d::Costmap2D& grid,
 
     // get the cells
     rasterize(map, cells, fill);
+
+    // set the cost of those cells
+    for (const auto& cell : cells) {
+        int mx = cell.x;
+        int my = cell.y;
+        // check if point is outside bounds
+        if (mx < min_i || mx >= max_i) {
+            continue;
+        }
+        if (my < min_j || my >= max_j) {
+            continue;
+        }
+        grid.setCost(mx, my, cost);
+    }
+}
+
+// ---------------------------------------------------------------------
+
+void VirtualLayer::setLineStringCost(costmap_2d::Costmap2D& grid,
+                                     const rgk::core::LineString& linestring,
+                                     unsigned char cost,
+                                     int min_i, int min_j, int max_i, int max_j) const
+{
+    std::vector<PointInt> map;
+    for (const auto& point : linestring) {
+        PointInt loc;
+        grid.worldToMapNoBounds(boost::geometry::get<0>(point), boost::geometry::get<1>(point), loc.x, loc.y);
+        map.push_back(loc);
+    }
+
+    std::vector<PointInt> cells;
+
+    // get the cells
+    rasterize(map, cells);
 
     // set the cost of those cells
     for (const auto& cell : cells) {
@@ -690,6 +722,15 @@ void VirtualLayer::rasterize(const std::vector<PointInt>& ring, std::vector<Poin
 
 // ---------------------------------------------------------------------
 
+void VirtualLayer::rasterize(const std::vector<PointInt>& linestring, std::vector<PointInt>& cells) const
+{
+    for (std::size_t i = 0; i < linestring.size() - 1; ++i) {
+        raytrace(linestring[i].x, linestring[i].y, linestring[i + 1].x, linestring[i + 1].y, cells);
+    }
+}
+
+// ---------------------------------------------------------------------
+
 void VirtualLayer::outlineCells(const std::vector<PointInt>& ring, std::vector<PointInt>& cells) const
 {
     for (std::size_t i = 0; i < ring.size() - 1; ++i) {
@@ -753,29 +794,42 @@ void VirtualLayer::computeMapBounds()
             _max_x = std::max(px, _max_x);
             _max_y = std::max(py, _max_y);
         }
+
+        for (const auto& inner : pair.second._polygon.value().inners()) {
+            for (const auto& point : inner) {
+                double px = boost::geometry::get<0>(point);
+                double py = boost::geometry::get<1>(point);
+                _min_x = std::min(px, _min_x);
+                _min_y = std::min(py, _min_y);
+                _max_x = std::max(px, _max_x);
+                _max_y = std::max(py, _max_y);
+            }
+        }
     }
 
-    // // iterate obstacle polygons
-    // for (int i = 0; i < _obstacle_polygons.size(); ++i) {
-    //     for (int j = 0; j < _obstacle_polygons.at(i).size(); ++j) {
-    //         double px = _obstacle_polygons.at(i).at(j).x;
-    //         double py = _obstacle_polygons.at(i).at(j).y;
-    //         _min_x = std::min(px, _min_x);
-    //         _min_y = std::min(py, _min_y);
-    //         _max_x = std::max(px, _max_x);
-    //         _max_y = std::max(py, _max_y);
-    //     }
-    // }
+    // iterate on rings
+    for (const auto& pair : _geometries[GeometryType::RING]) {
+        for (const auto& point : pair.second._ring.value()) {
+            double px = boost::geometry::get<0>(point);
+            double py = boost::geometry::get<1>(point);
+            _min_x = std::min(px, _min_x);
+            _min_y = std::min(py, _min_y);
+            _max_x = std::max(px, _max_x);
+            _max_y = std::max(py, _max_y);
+        }
+    }
 
-    // // iterate obstacle points
-    // for (int i = 0; i < _obstacle_points.size(); ++i) {
-    //     double px = _obstacle_points.at(i).x;
-    //     double py = _obstacle_points.at(i).y;
-    //     _min_x = std::min(px, _min_x);
-    //     _min_y = std::min(py, _min_y);
-    //     _max_x = std::max(px, _max_x);
-    //     _max_y = std::max(py, _max_y);
-    // }
+    // iterate on linestrings
+    for (const auto& pair : _geometries[GeometryType::LINESTRING]) {
+        for (const auto& point : pair.second._linestring.value()) {
+            double px = boost::geometry::get<0>(point);
+            double py = boost::geometry::get<1>(point);
+            _min_x = std::min(px, _min_x);
+            _min_y = std::min(py, _min_y);
+            _max_x = std::max(px, _max_x);
+            _max_y = std::max(py, _max_y);
+        }
+    }
 }
 
 } // namespace virtual_costmap_layer
