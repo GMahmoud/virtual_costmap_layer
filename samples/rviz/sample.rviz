@@ -39,7 +39,7 @@ Visualization Manager:
       Cell Size: 1
       Class: rviz/Grid
       Color: 255; 255; 255
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.029999999329447746
         Value: Lines
@@ -52,17 +52,17 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 50
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /map
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
@@ -134,7 +134,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -2.184999704360962
+      Angle: -0.04500039666891098
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -144,10 +144,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 81.35353088378906
+      Scale: 59.23734664916992
       Target Frame: <Fixed Frame>
-      X: 3.748955726623535
-      Y: -0.037970710545778275
+      X: 4.64035701751709
+      Y: 2.620192527770996
     Saved: ~
 Window Geometry:
   Displays:

@@ -5,6 +5,13 @@
 
 #pragma once
 
+#include <map>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
+
 #include <virtual_costmap_layer/AddElement.h>
 #include <virtual_costmap_layer/Form.h>
 #include <virtual_costmap_layer/GetElement.h>
@@ -13,15 +20,7 @@
 #include <virtual_costmap_layer/VirtualLayerConfig.h>
 #include <virtual_costmap_layer/geometries.hpp>
 
-#include <map>
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <string>
-#include <vector>
-
 #include <XmlRpcValue.h>
-
 #include <costmap_2d/costmap_2d.h>
 #include <costmap_2d/layer.h>
 #include <dynamic_reconfigure/server.h>
