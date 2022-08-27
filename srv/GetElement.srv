@@ -1,0 +1,5 @@
+string uuid
+---
+bool success
+string message
+virtual_costmap_layer/Form form

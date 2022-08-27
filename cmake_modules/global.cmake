@@ -53,3 +53,20 @@ if(Git_FOUND)
 else()
   set(GIT_UNSTAGED_CHANGES 0)
 endif()
+
+# ##############################################################################
+# Custom functions
+# ##############################################################################
+
+## This function is used to find Boost by checking suitable versions
+function(find_boost)
+  set(proper_boost_versions 1.75 1.74 1.73 1.72 1.71 1.69 1.65.1)
+  foreach(proper_boost_version ${proper_boost_versions})
+    find_package(Boost ${proper_boost_version} EXACT QUIET)
+    if(Boost_FOUND)
+      set(BOOST_VER ${proper_boost_version} CACHE STRING "boost version")
+      return()
+    endif()
+  endforeach()
+  message(FATAL_ERROR "CMake could not find a proper version of Boost (${proper_boost_versions})")
+endfunction()

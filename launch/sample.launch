@@ -11,7 +11,7 @@
     <arg name="base_frame_id" default="base_footprint"/>
     <arg name="global_frame_id" default="map"/>
     
-    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" launch-prefix="gdb -ex run --args">
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
         <rosparam file="$(find virtual_costmap_layer)/samples/move_base/common_params.yaml" command="load" ns="global_costmap" />
         <rosparam file="$(find virtual_costmap_layer)/samples/move_base/common_params.yaml" command="load" ns="local_costmap" />
         <rosparam file="$(find virtual_costmap_layer)/samples/move_base/local_params.yaml"  command="load" />

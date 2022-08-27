@@ -1,3 +1,8 @@
+// Copyright (C) Mahmoud Ghorbel - All Rights Reserved
+// Unauthorized copying of this file, via any medium is strictly prohibited
+// Proprietary and confidential
+// Written by MG <mahmoud.ghorbel@hotmail.com>
+
 #include "virtual_costmap_layer_version.hpp"
 
 #include <iostream>

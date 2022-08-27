@@ -52,9 +52,17 @@ find_package(catkin REQUIRED
 generate_dynamic_reconfigure_options(cfg/VirtualLayer.cfg)
 
 add_message_files(FILES
+                  Circle.msg
                   Form.msg
+                  LineString.msg
                   Obstacles.msg
-                  Zone.msg)
+                  Polygon.msg
+                  Ring.msg)
+
+add_service_files(FILES
+                  AddElement.srv
+                  GetElement.srv
+                  RemoveElement.srv)
 
 generate_messages(DEPENDENCIES
                   geometry_msgs)
@@ -81,7 +89,7 @@ catkin_package(INCLUDE_DIRS
 include_directories(${CMAKE_BINARY_DIR}/include ${catkin_INCLUDE_DIRS} include)
 
 add_library(virtual_layer src/virtual_layer.cpp)
-target_link_libraries(virtual_layer ${catkin_LIBRARIES})
+target_link_libraries(virtual_layer ${catkin_LIBRARIES} Boost::boost)
 add_dependencies(virtual_layer ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 add_executable(interface src/version.cpp)

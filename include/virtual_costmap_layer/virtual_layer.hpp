@@ -1,15 +1,19 @@
-////  \file virtual_layer.hpp
-////  \author Mahmoud Ghorbel
-////  \date 13 Sep 2016
+// Copyright (C) Mahmoud Ghorbel - All Rights Reserved
+// Unauthorized copying of this file, via any medium is strictly prohibited
+// Proprietary and confidential
+// Written by MG <mahmoud.ghorbel@hotmail.com>
 
 #pragma once
 
-#include <virtual_costmap_layer/Obstacles.h>
+#include <virtual_costmap_layer/AddElement.h>
+#include <virtual_costmap_layer/GetElement.h>
+#include <virtual_costmap_layer/RemoveElement.h>
 #include <virtual_costmap_layer/VirtualLayerConfig.h>
-#include <virtual_costmap_layer/Zone.h>
+#include <virtual_costmap_layer/geometries.hpp>
 
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,14 +25,20 @@
 #include <geometry_msgs/Point.h>
 #include <ros/ros.h>
 
-// #include <geometry_msgs/PoseStamped.h>
-
-// #include <stdlib.h>
-// #include <tf/transform_datatypes.h>
-
-// #include <unordered_map>
-
 namespace virtual_costmap_layer {
+
+enum class GeometryType {
+    LINESTRING,
+    POLYGON,
+    RING,
+    CIRCLE
+};
+
+struct Geometry {
+    std::optional<rgk::core::Polygon> _polygon;
+    std::optional<rgk::core::LineString> _linestring;
+    std::optional<rgk::core::Ring> _ring;
+};
 
 struct PointInt {
     int x;
@@ -74,7 +84,7 @@ class VirtualLayer : public costmap_2d::Layer {
                         unsigned char cost, int min_i, int min_j, int max_i, int max_j, bool fill_polygon);
 
     /// \brief                     converts polygon (in map coordinates) to a set of cells in the map
-    /// \note                      This method is mainly based on Costmap2D::convexFillCells() but accounts for a self - implemented polygonOutlineCells() method and allows negative map coordinates
+    /// \note                      this method is mainly based on Costmap2D::convexFillCells() but accounts for a self - implemented polygonOutlineCells() method and allows negative map coordinates
     /// \param polygon             Polygon defined  by a vector of map coordinates
     /// \param fill                If true, the interior of the polygon will be considered as well
     /// \param[out] polygon_cells  new cells in map coordinates are pushed back on this container
@@ -96,52 +106,49 @@ class VirtualLayer : public costmap_2d::Layer {
     /// \param[out] cells  new cells in map coordinates are pushed back on this container
     void raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells);
 
-    /// \brief             reads the topic names in YAML-Format from the ROS parameter server in the namespace of this plugin
-    /// \param nh          rosnode handle
-    /// \param param       name of the YAML parameter where the topic names are saved
-    void parseTopicsFromYaml(ros::NodeHandle& nh, const std::string& param);
-
     /// \brief             reads the forms in YAML-Format from the ROS parameter server in the namespace of this plugin
     /// \param nh          rosnode handle
-    /// \param param       name of the YAML format parameter where the forms are saved
-    void parseFormListFromYaml(const ros::NodeHandle& nh, const std::string& param);
+    void parseFormListFromYaml(const ros::NodeHandle& nh);
 
-    /// \brief             convert to geometry_msgs::Point a YAML-Array. z-coordinate is set to zero
-    /// \param val         YAML-array with to point-coordinates (x and y)
-    /// \param point       variable where the determined point get saved
-    void convert(const XmlRpc::XmlRpcValue& val, geometry_msgs::Point& point);
+    /// \brief             add element to virtual costmap layer
+    /// \param req         service request
+    /// \param res         service response
+    bool addElement(virtual_costmap_layer::AddElementRequest& req, virtual_costmap_layer::AddElementResponse& res);
 
-    /// \brief zone callback function
-    void zoneCallback(const virtual_costmap_layer::ZoneConstPtr& msg);
+    /// \brief             remove element from virtual costmap layer
+    /// \param req         service request
+    /// \param res         service response
+    bool removeElement(virtual_costmap_layer::RemoveElementRequest& req, virtual_costmap_layer::RemoveElementResponse& res);
 
-    /// \brief obstacle callback function
-    void obstaclesCallback(const virtual_costmap_layer::ObstaclesConstPtr& obstacles_msg);
+    /// \brief             get element in virtual costmap layer
+    /// \param req         service request
+    /// \param res         service response
+    bool getElement(virtual_costmap_layer::GetElementRequest& req, virtual_costmap_layer::GetElementResponse& res);
 
-    /// \brief                checks if the robot point is in the polygon defining the zone
-    /// \note                 works only for one zone otherwise returns true
-    /// \param zone           polygon zone
-    /// \return bool true     if the robot is in the zone
-    bool robotInZone(const Polygon& zone);
+    /// \brief             save linestring element type in virtual costmap layer geometries
+    /// \param linestring  linestring data
+    /// \return uuid of element
+    std::string saveLineStringGeometry(const rgk::core::LineString& linestring);
 
-    /// \brief gets a current geometry_msgs::Point of the robot
-    /// \return Geometry_msgs::Point current pose
-    geometry_msgs::Point getRobotPoint();
+    /// \brief             save polygon element type in virtual costmap layer forms
+    /// \param polygon     polygon data
+    /// \return uuid of element
+    std::string savePolygonGeometry(const rgk::core::Polygon& polygon);
 
     std::shared_ptr<dynamic_reconfigure::Server<VirtualLayerConfig>> _dsrv; // dynamic_reconfigure server for the costmap
     std::mutex _data_mutex;                                                 // mutex for the accessing forms
     double _costmap_resolution;                                             // resolution of the overlayed costmap to create the thinnest line out of two points
-    bool _one_zone_mode, _clear_obstacles;                                  // put in memory previous zones and obstacles if false
-    std::string _base_frame;                                                // base frame of the robot by default "base_link"
-    std::string _map_frame;                                                 // map frame by default "map"
-    std::vector<geometry_msgs::Point> _obstacle_points;                     // vector to save the obstacle points in source coordinates
-    std::vector<Polygon> _zone_polygons;                                    // vector to save the zone polygons (more than 3 edges) in source coordinates
-    std::vector<Polygon> _obstacle_polygons;                                // vector to save the obstacle polygons (including lines) in source coordinates
-    std::vector<Polygon> _form_polygons;                                    // vector to save the form polygons (including lines) in source coordinates
-    std::vector<geometry_msgs::Point> _form_points;                         // vector to save the form points in source coordinates
+
+    std::string _base_frame; // base frame of the robot by default "base_link"
+    std::string _map_frame;  // map frame by default "map"
+
+    std::map<GeometryType, std::map<std::string, Geometry>> _geometries; // map of saved geometry element of virtual layet
 
     double _min_x, _min_y, _max_x, _max_y; // cached map bounds
 
-    std::vector<ros::Subscriber> _subs; // vector to save all ros subscribers
+    ros::ServiceServer _add_server;    // RPC service to add element
+    ros::ServiceServer _remove_server; // RPC service to remove element
+    ros::ServiceServer _get_server;    // RPC service to get element
 };
 
 } // namespace virtual_costmap_layer
