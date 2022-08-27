@@ -65,7 +65,7 @@ class VirtualLayer : public costmap_2d::Layer {
                               double* min_x, double* min_y, double* max_x, double* max_y);
 
     //// \brief  function which get called at every cost updating procdure of the overlayed costmap. The before readed costs will get filled
-    virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
+    virtual void updateCosts(costmap_2d::Costmap2D& grid, int min_i, int min_j, int max_i, int max_j);
 
   private:
     ////  \brief dynamic reconfiguration callback
@@ -76,29 +76,32 @@ class VirtualLayer : public costmap_2d::Layer {
     void computeMapBounds();
 
     /// \brief                set cost in a Costmap2D for a polygon (polygon may be located outside bounds)
-    /// \param master_grid    reference to the Costmap2D object
-    /// \param polygon        polygon defined by a vector of points (in world coordinates)
+    /// \param grid           reference to the Costmap2D object
+    /// \param ring           ring (in world coordinates)
     /// \param cost           the cost value to be set (0,255)
     /// \param min_i          minimum bound on the horizontal map index/coordinate
     /// \param min_j          minimum bound on the vertical map index/coordinate
     /// \param max_i          maximum bound on the horizontal map index/coordinate
     /// \param max_j          maximum bound on the vertical map index/coordinate
-    /// \param fill_polygon   if true, tue cost for the interior of the polygon will be set as well
-    void setPolygonCost(costmap_2d::Costmap2D& master_grid, const Polygon& polygon,
-                        unsigned char cost, int min_i, int min_j, int max_i, int max_j, bool fill_polygon);
+    /// \param fill           if true, the cost of the interior of the ring will be set as well
+    void setRingCost(costmap_2d::Costmap2D& grid,
+                     const rgk::core::Ring& ring,
+                     unsigned char cost,
+                     int min_i, int min_j, int max_i, int max_j,
+                     bool fill) const;
 
-    /// \brief                     converts polygon (in map coordinates) to a set of cells in the map
-    /// \note                      this method is mainly based on Costmap2D::convexFillCells() but accounts for a self - implemented polygonOutlineCells() method and allows negative map coordinates
-    /// \param polygon             Polygon defined  by a vector of map coordinates
-    /// \param fill                If true, the interior of the polygon will be considered as well
-    /// \param[out] polygon_cells  new cells in map coordinates are pushed back on this container
-    void rasterizePolygon(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells, bool fill);
+    /// \brief                converts ring (in map coordinates) to a set of cells in the map
+    /// \note                 this method is mainly based on Costmap2D::convexFillCells() but accounts for a self - implemented polygonOutlineCells() method and allows negative map coordinates
+    /// \param ring           ring (in map coordinates)
+    /// \param fill           If true, the interior of the polygon will be considered as well
+    /// \param[out] cells     new cells in map coordinates are pushed back on this container
+    void rasterize(const std::vector<PointInt>& ring, std::vector<PointInt>& cells, bool fill) const;
 
     /// \brief                     extracts the boundary of a polygon in terms of map cells
     /// \note                      this method is based on Costmap2D::polygonOutlineCells() but accounts for a self - implemented raytrace algorithm and allows negative map coordinates
-    /// \param polygon             polygon defined  by a vector of map coordinates
-    /// \param[out] polygon_cells  new cells in map coordinates are pushed back on this container
-    void polygonOutlineCells(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells);
+    /// \param ring                ring defined  by a vector of map coordinates
+    /// \param[out] cells  new cells in map coordinates are pushed back on this container
+    void outlineCells(const std::vector<PointInt>& ring, std::vector<PointInt>& cells) const;
 
     /// \brief             rasterizes line between two map coordinates into a set of cells
     /// \note              since Costmap2D::raytraceLine() is based on the size_x and since we want to rasterize polygons that might also be located outside map bounds we provide a modified raytrace
@@ -108,7 +111,7 @@ class VirtualLayer : public costmap_2d::Layer {
     /// \param x1          line end x-coordinate (map frame)
     /// \param y1          line end y-coordinate (map frame)
     /// \param[out] cells  new cells in map coordinates are pushed back on this container
-    void raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells);
+    void raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells) const;
 
     /// \brief             reads the forms in YAML-Format from the ROS parameter server in the namespace of this plugin
     /// \param nh          rosnode handle

@@ -513,37 +513,56 @@ void VirtualLayer::reconfigureCb(VirtualLayerConfig& config, uint32_t level)
     _map_frame = config.map_frame;
 }
 
+// ---------------------------------------------------------------------
+
 void VirtualLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
                                 double* min_x, double* min_y, double* max_x, double* max_y)
 {
-    // if (!enabled_) {
-    //     return;
-    // }
+    if (!enabled_) {
+        return;
+    }
 
-    // std::lock_guard<std::mutex> l(_data_mutex);
+    std::lock_guard<std::mutex> l(_data_mutex);
 
-    // if (_obstacle_points.empty() && _zone_polygons.empty() && _obstacle_polygons.empty()) {
-    //     return;
-    // }
+    auto size = _geometries.at(GeometryType::LINESTRING).size() +
+                _geometries.at(GeometryType::POLYGON).size() +
+                _geometries.at(GeometryType::RING).size() +
+                _geometries.at(GeometryType::CIRCLE).size();
 
-    // *min_x = std::min(*min_x, _min_x);
-    // *min_y = std::min(*min_y, _min_y);
-    // *max_x = std::max(*max_x, _max_x);
-    // *max_y = std::max(*max_y, _max_y);
+    if (size == 0) {
+        return;
+    }
+
+    *min_x = std::min(*min_x, _min_x);
+    *min_y = std::min(*min_y, _min_y);
+    *max_x = std::max(*max_x, _max_x);
+    *max_y = std::max(*max_y, _max_y);
 }
 
-void VirtualLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
+// ---------------------------------------------------------------------
+
+void VirtualLayer::updateCosts(costmap_2d::Costmap2D& grid, int min_i, int min_j, int max_i, int max_j)
 {
-    // if (!enabled_) {
-    //     return;
-    // }
+    if (!enabled_) {
+        return;
+    }
 
-    // std::lock_guard<std::mutex> l(_data_mutex);
+    std::lock_guard<std::mutex> l(_data_mutex);
 
-    // // set costs of zone polygons
-    // for (int i = 0; i < _zone_polygons.size(); ++i) {
-    //     setPolygonCost(master_grid, _zone_polygons[i], costmap_2d::LETHAL_OBSTACLE, min_i, min_j, max_i, max_j, false);
-    // }
+    // set costs of polygons
+    for (const auto& pair : _geometries[GeometryType::POLYGON]) {
+        setRingCost(grid, pair.second._polygon.value().outer(),
+                    costmap_2d::LETHAL_OBSTACLE,
+                    min_i, min_j, max_i, max_j,
+                    false);
+
+        for (const auto& inner : pair.second._polygon.value().inners()) {
+            setRingCost(grid, inner,
+                        costmap_2d::LETHAL_OBSTACLE,
+                        min_i, min_j, max_i, max_j,
+                        true);
+        }
+    }
 
     // // set costs of obstacle polygons
     // for (int i = 0; i < _obstacle_polygons.size(); ++i) {
@@ -560,24 +579,181 @@ void VirtualLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, in
     // }
 }
 
+// ---------------------------------------------------------------------
+
+void VirtualLayer::setRingCost(costmap_2d::Costmap2D& grid,
+                               const rgk::core::Ring& ring,
+                               unsigned char cost,
+                               int min_i, int min_j, int max_i, int max_j,
+                               bool fill) const
+{
+
+    std::vector<PointInt> map;
+    for (const auto& point : ring) {
+        PointInt loc;
+        grid.worldToMapNoBounds(boost::geometry::get<0>(point), boost::geometry::get<1>(point), loc.x, loc.y);
+        map.push_back(loc);
+    }
+
+    std::vector<PointInt> cells;
+
+    // get the cells
+    rasterize(map, cells, fill);
+
+    // set the cost of those cells
+    for (const auto& cell : cells) {
+        int mx = cell.x;
+        int my = cell.y;
+        // check if point is outside bounds
+        if (mx < min_i || mx >= max_i) {
+            continue;
+        }
+        if (my < min_j || my >= max_j) {
+            continue;
+        }
+        grid.setCost(mx, my, cost);
+    }
+}
+
+// ---------------------------------------------------------------------
+
+void VirtualLayer::rasterize(const std::vector<PointInt>& ring, std::vector<PointInt>& cells, bool fill) const
+{
+    //we need a minimum point if the ring
+    if (ring.size() < 3) {
+        return;
+    }
+
+    //first get the cells that make up the outline of the polygon
+    outlineCells(ring, cells);
+
+    if (!fill) {
+        return;
+    }
+
+    //quick bubble sort to sort points by x
+    PointInt swap;
+    unsigned int i = 0;
+    while (i < cells.size() - 1) {
+        if (cells[i].x > cells[i + 1].x) {
+            swap = cells[i];
+            cells[i] = cells[i + 1];
+            cells[i + 1] = swap;
+
+            if (i > 0) {
+                --i;
+            }
+        } else {
+            ++i;
+        }
+    }
+
+    i = 0;
+    PointInt min_pt;
+    PointInt max_pt;
+    int min_x = cells[0].x;
+    int max_x = cells[(int)cells.size() - 1].x;
+
+    //walk through each column and mark cells inside the polygon
+    for (int x = min_x; x <= max_x; ++x) {
+        if (i >= (int)cells.size() - 1) {
+            break;
+        }
+
+        if (cells[i].y < cells[i + 1].y) {
+            min_pt = cells[i];
+            max_pt = cells[i + 1];
+        } else {
+            min_pt = cells[i + 1];
+            max_pt = cells[i];
+        }
+
+        i += 2;
+        while (i < cells.size() && cells[i].x == x) {
+            if (cells[i].y < min_pt.y) {
+                min_pt = cells[i];
+            } else if (cells[i].y > max_pt.y) {
+                max_pt = cells[i];
+            }
+            ++i;
+        }
+
+        PointInt pt;
+        //loop though cells in the column
+        for (int y = min_pt.y; y < max_pt.y; ++y) {
+            pt.x = x;
+            pt.y = y;
+            cells.push_back(pt);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+
+void VirtualLayer::outlineCells(const std::vector<PointInt>& ring, std::vector<PointInt>& cells) const
+{
+    for (std::size_t i = 0; i < ring.size() - 1; ++i) {
+        raytrace(ring[i].x, ring[i].y, ring[i + 1].x, ring[i + 1].y, cells);
+    }
+
+    if (!ring.empty()) {
+        unsigned int last_index = ring.size() - 1;
+        // we also need to close the polygon by going from the last point to the first
+        raytrace(ring[last_index].x, ring[last_index].y, ring[0].x, ring[0].y, cells);
+    }
+}
+
+// ---------------------------------------------------------------------
+
+void VirtualLayer::raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells) const
+{
+    int dx = std::abs(x1 - x0);
+    int dy = std::abs(y1 - y0);
+
+    PointInt pt;
+    pt.x = x0;
+    pt.y = y0;
+
+    int n = 1 + dx + dy;
+    int x_inc = (x1 > x0) ? 1 : -1;
+    int y_inc = (y1 > y0) ? 1 : -1;
+    int error = dx - dy;
+    dx *= 2;
+    dy *= 2;
+
+    for (; n > 0; --n) {
+        cells.push_back(pt);
+
+        if (error > 0) {
+            pt.x += x_inc;
+            error -= dy;
+        } else {
+            pt.y += y_inc;
+            error += dx;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+
 void VirtualLayer::computeMapBounds()
 {
-    // std::lock_guard<std::mutex> l(_data_mutex);
+    std::lock_guard<std::mutex> l(_data_mutex);
 
-    // // reset bounds
-    // _min_x = _min_y = _max_x = _max_y = 0;
+    // reset bounds
+    _min_x = _min_y = _max_x = _max_y = 0;
 
-    // // iterate zone polygons
-    // for (int i = 0; i < _zone_polygons.size(); ++i) {
-    //     for (int j = 0; j < _zone_polygons.at(i).size(); ++j) {
-    //         double px = _zone_polygons.at(i).at(j).x;
-    //         double py = _zone_polygons.at(i).at(j).y;
-    //         _min_x = std::min(px, _min_x);
-    //         _min_y = std::min(py, _min_y);
-    //         _max_x = std::max(px, _max_x);
-    //         _max_y = std::max(py, _max_y);
-    //     }
-    // }
+    // iterate on polygons
+    for (const auto& pair : _geometries[GeometryType::POLYGON]) {
+        for (const auto& point : pair.second._polygon.value().outer()) {
+            double px = boost::geometry::get<0>(point);
+            double py = boost::geometry::get<1>(point);
+            _min_x = std::min(px, _min_x);
+            _min_y = std::min(py, _min_y);
+            _max_x = std::max(px, _max_x);
+            _max_y = std::max(py, _max_y);
+        }
+    }
 
     // // iterate obstacle polygons
     // for (int i = 0; i < _obstacle_polygons.size(); ++i) {
@@ -599,140 +775,6 @@ void VirtualLayer::computeMapBounds()
     //     _min_y = std::min(py, _min_y);
     //     _max_x = std::max(px, _max_x);
     //     _max_y = std::max(py, _max_y);
-    // }
-}
-
-void VirtualLayer::setPolygonCost(costmap_2d::Costmap2D& master_grid, const Polygon& polygon, unsigned char cost,
-                                  int min_i, int min_j, int max_i, int max_j, bool fill_polygon)
-{
-    // std::vector<PointInt> map_polygon;
-    // for (unsigned int i = 0; i < polygon.size(); ++i) {
-    //     PointInt loc;
-    //     master_grid.worldToMapNoBounds(polygon[i].x, polygon[i].y, loc.x, loc.y);
-    //     map_polygon.push_back(loc);
-    // }
-
-    // std::vector<PointInt> polygon_cells;
-
-    // // get the cells that fill the polygon
-    // rasterizePolygon(map_polygon, polygon_cells, fill_polygon);
-
-    // // set the cost of those cells
-    // for (unsigned int i = 0; i < polygon_cells.size(); ++i) {
-    //     int mx = polygon_cells[i].x;
-    //     int my = polygon_cells[i].y;
-    //     // check if point is outside bounds
-    //     if (mx < min_i || mx >= max_i)
-    //         continue;
-    //     if (my < min_j || my >= max_j)
-    //         continue;
-    //     master_grid.setCost(mx, my, cost);
-    // }
-}
-
-void VirtualLayer::polygonOutlineCells(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells)
-{
-    // for (unsigned int i = 0; i < polygon.size() - 1; ++i) {
-    //     raytrace(polygon[i].x, polygon[i].y, polygon[i + 1].x, polygon[i + 1].y, polygon_cells);
-    // }
-    // if (!polygon.empty()) {
-    //     unsigned int last_index = polygon.size() - 1;
-    //     // we also need to close the polygon by going from the last point to the first
-    //     raytrace(polygon[last_index].x, polygon[last_index].y, polygon[0].x, polygon[0].y, polygon_cells);
-    // }
-}
-
-void VirtualLayer::raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells)
-{
-    // int dx = abs(x1 - x0);
-    // int dy = abs(y1 - y0);
-    // PointInt pt;
-    // pt.x = x0;
-    // pt.y = y0;
-    // int n = 1 + dx + dy;
-    // int x_inc = (x1 > x0) ? 1 : -1;
-    // int y_inc = (y1 > y0) ? 1 : -1;
-    // int error = dx - dy;
-    // dx *= 2;
-    // dy *= 2;
-
-    // for (; n > 0; --n) {
-    //     cells.push_back(pt);
-
-    //     if (error > 0) {
-    //         pt.x += x_inc;
-    //         error -= dy;
-    //     } else {
-    //         pt.y += y_inc;
-    //         error += dx;
-    //     }
-    // }
-}
-
-void VirtualLayer::rasterizePolygon(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells, bool fill)
-{
-    // // this implementation is a slighly modified version of Costmap2D::convexFillCells(...)
-
-    // //we need a minimum polygon of a traingle
-    // if (polygon.size() < 3)
-    //     return;
-
-    // //first get the cells that make up the outline of the polygon
-    // polygonOutlineCells(polygon, polygon_cells);
-
-    // if (!fill)
-    //     return;
-
-    // //quick bubble sort to sort points by x
-    // PointInt swap;
-    // unsigned int i = 0;
-    // while (i < polygon_cells.size() - 1) {
-    //     if (polygon_cells[i].x > polygon_cells[i + 1].x) {
-    //         swap = polygon_cells[i];
-    //         polygon_cells[i] = polygon_cells[i + 1];
-    //         polygon_cells[i + 1] = swap;
-
-    //         if (i > 0)
-    //             --i;
-    //     } else
-    //         ++i;
-    // }
-
-    // i = 0;
-    // PointInt min_pt;
-    // PointInt max_pt;
-    // int min_x = polygon_cells[0].x;
-    // int max_x = polygon_cells[(int)polygon_cells.size() - 1].x;
-
-    // //walk through each column and mark cells inside the polygon
-    // for (int x = min_x; x <= max_x; ++x) {
-    //     if (i >= (int)polygon_cells.size() - 1)
-    //         break;
-
-    //     if (polygon_cells[i].y < polygon_cells[i + 1].y) {
-    //         min_pt = polygon_cells[i];
-    //         max_pt = polygon_cells[i + 1];
-    //     } else {
-    //         min_pt = polygon_cells[i + 1];
-    //         max_pt = polygon_cells[i];
-    //     }
-
-    //     i += 2;
-    //     while (i < polygon_cells.size() && polygon_cells[i].x == x) {
-    //         if (polygon_cells[i].y < min_pt.y)
-    //             min_pt = polygon_cells[i];
-    //         else if (polygon_cells[i].y > max_pt.y)
-    //             max_pt = polygon_cells[i];
-    //         ++i;
-    //     }
-
-    //     PointInt pt;
-    //     //loop though cells in the column
-    //     for (int y = min_pt.y; y < max_pt.y; ++y) {
-    //         pt.x = x;
-    //         pt.y = y;
-    //         polygon_cells.push_back(pt);
-    //     }
     // }
 }
 
