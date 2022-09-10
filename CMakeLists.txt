@@ -1,6 +1,6 @@
 # ##############################################################################
 # Setup version
-file(STRINGS ${CMAKE_SOURCE_DIR}/VERSION version)
+file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/VERSION version)
 message(STATUS "Read version from file: ${version}")
 
 cmake_minimum_required(VERSION 3.5.1)
