@@ -2,7 +2,12 @@
 # Version setup
 # ##############################################################################
 
-file(STRINGS ${CMAKE_SOURCE_DIR}/VERSION PROJECT_VERSION)
+set(PACKAGE_NAME virtual_costmap_layer)
+IF(EXISTS ${CMAKE_SOURCE_DIR}/VERSION)
+    file(STRINGS ${CMAKE_SOURCE_DIR}/VERSION PROJECT_VERSION)
+ELSE()
+    file(STRINGS ${CMAKE_SOURCE_DIR}/${PACKAGE_NAME}/VERSION PROJECT_VERSION)
+ENDIF()
 message(STATUS "Project version: ${PROJECT_VERSION}")
 
 # ##############################################################################
@@ -10,7 +15,7 @@ message(STATUS "Project version: ${PROJECT_VERSION}")
 # ##############################################################################
 
 cmake_minimum_required(VERSION 3.5.1)
-project(virtual_costmap_layer LANGUAGES C CXX VERSION ${PROJECT_VERSION})
+project(${PACKAGE_NAME} LANGUAGES C CXX VERSION ${PROJECT_VERSION})
 set(PROJECT_RELEASE_TYPE release) # alpha, beta, release
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake_modules")
