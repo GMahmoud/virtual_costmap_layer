@@ -5,6 +5,7 @@
 
 #include <sstream>
 
+#include <virtual_costmap_layer/tessellator.hpp>
 #include <virtual_costmap_layer/virtual_layer.hpp>
 
 #include <boost/geometry.hpp>
@@ -76,6 +77,9 @@ void VirtualLayer::onInitialize()
     _geometries.insert(std::make_pair(GeometryType::POLYGON, std::map<std::string, Geometry>()));
     _geometries.insert(std::make_pair(GeometryType::RING, std::map<std::string, Geometry>()));
     _geometries.insert(std::make_pair(GeometryType::CIRCLE, std::map<std::string, Geometry>()));
+
+    nh.getParam("tessellation/enabled", _enable_tessellation);
+    ROS_INFO_STREAM("Tessellation: " << _enable_tessellation ? "true" : "false");
 
     // reading the defined forms out of the namespace of this plugin!
     parseFormListFromYaml(nh);
@@ -418,9 +422,21 @@ std::string VirtualLayer::savePolygonGeometry(const rgk::core::Polygon& polygon)
     Geometry geometry;
 
     if (polygon.outer().empty() && polygon.inners().size() == 1) {
-        ROS_INFO_STREAM(tag << "Adding Ring [uuid: " << uuid << "]");
-        geometry._ring = polygon.inners()[0];
-        _geometries[GeometryType::RING].insert(std::make_pair(uuid, geometry));
+        if (_enable_tessellation) {
+            rgk::tessellator::Tessellator tessellator;
+            rgk::core::Polygon p;
+            p.outer() = polygon.inners()[0];
+            geometry._tessellated_ring = tessellator.process(p);
+            geometry._ring = polygon.inners()[0];
+            geometry._tessellated = true;
+            ROS_INFO_STREAM(tag << "Adding Ring [uuid: " << uuid << "] [tessellated: " << geometry._tessellated_ring.value().size() << "]");
+            _geometries[GeometryType::RING].insert(std::make_pair(uuid, geometry));
+        } else {
+            ROS_INFO_STREAM(tag << "Adding Ring [uuid: " << uuid << "]");
+            geometry._ring = polygon.inners()[0];
+            geometry._tessellated = false;
+            _geometries[GeometryType::RING].insert(std::make_pair(uuid, geometry));
+        }
 
     } else {
         ROS_INFO_STREAM(tag << "Adding Polygon [uuid: " << uuid << "]");
@@ -548,32 +564,47 @@ void VirtualLayer::updateCosts(costmap_2d::Costmap2D& grid, int min_i, int min_j
 
     // set costs of polygons
     for (const auto& pair : _geometries[GeometryType::POLYGON]) {
-        setRingCost(grid, pair.second._polygon.value().outer(),
-                    costmap_2d::LETHAL_OBSTACLE,
-                    min_i, min_j, max_i, max_j,
-                    false);
-
-        for (const auto& inner : pair.second._polygon.value().inners()) {
-            setRingCost(grid, inner,
+        if (pair.second._polygon) {
+            setRingCost(grid, pair.second._polygon.value().outer(),
                         costmap_2d::LETHAL_OBSTACLE,
                         min_i, min_j, max_i, max_j,
-                        true);
+                        false);
+
+            for (const auto& inner : pair.second._polygon.value().inners()) {
+                setRingCost(grid, inner,
+                            costmap_2d::LETHAL_OBSTACLE,
+                            min_i, min_j, max_i, max_j,
+                            true);
+            }
         }
     }
 
     // set costs of rings
     for (const auto& pair : _geometries[GeometryType::RING]) {
-        setRingCost(grid, pair.second._ring.value(),
-                    costmap_2d::LETHAL_OBSTACLE,
-                    min_i, min_j, max_i, max_j,
-                    true);
+        if (pair.second._ring) {
+            if (!pair.second._tessellated) {
+                setRingCost(grid, pair.second._ring.value(),
+                            costmap_2d::LETHAL_OBSTACLE,
+                            min_i, min_j, max_i, max_j,
+                            true);
+            } else if (pair.second._tessellated_ring) {
+                for (const auto& ring : pair.second._tessellated_ring.value()) {
+                    setRingCost(grid, ring,
+                                costmap_2d::LETHAL_OBSTACLE,
+                                min_i, min_j, max_i, max_j,
+                                true);
+                }
+            }
+        }
     }
 
     // set costs of linestrings
     for (const auto& pair : _geometries[GeometryType::LINESTRING]) {
-        setLineStringCost(grid, pair.second._linestring.value(),
-                          costmap_2d::LETHAL_OBSTACLE,
-                          min_i, min_j, max_i, max_j);
+        if (pair.second._linestring) {
+            setLineStringCost(grid, pair.second._linestring.value(),
+                              costmap_2d::LETHAL_OBSTACLE,
+                              min_i, min_j, max_i, max_j);
+        }
     }
 }
 
@@ -786,17 +817,8 @@ void VirtualLayer::computeMapBounds()
 
     // iterate on polygons
     for (const auto& pair : _geometries[GeometryType::POLYGON]) {
-        for (const auto& point : pair.second._polygon.value().outer()) {
-            double px = boost::geometry::get<0>(point);
-            double py = boost::geometry::get<1>(point);
-            _min_x = std::min(px, _min_x);
-            _min_y = std::min(py, _min_y);
-            _max_x = std::max(px, _max_x);
-            _max_y = std::max(py, _max_y);
-        }
-
-        for (const auto& inner : pair.second._polygon.value().inners()) {
-            for (const auto& point : inner) {
+        if (pair.second._polygon) {
+            for (const auto& point : pair.second._polygon.value().outer()) {
                 double px = boost::geometry::get<0>(point);
                 double py = boost::geometry::get<1>(point);
                 _min_x = std::min(px, _min_x);
@@ -804,30 +826,58 @@ void VirtualLayer::computeMapBounds()
                 _max_x = std::max(px, _max_x);
                 _max_y = std::max(py, _max_y);
             }
+
+            for (const auto& inner : pair.second._polygon.value().inners()) {
+                for (const auto& point : inner) {
+                    double px = boost::geometry::get<0>(point);
+                    double py = boost::geometry::get<1>(point);
+                    _min_x = std::min(px, _min_x);
+                    _min_y = std::min(py, _min_y);
+                    _max_x = std::max(px, _max_x);
+                    _max_y = std::max(py, _max_y);
+                }
+            }
         }
     }
 
     // iterate on rings
     for (const auto& pair : _geometries[GeometryType::RING]) {
-        for (const auto& point : pair.second._ring.value()) {
-            double px = boost::geometry::get<0>(point);
-            double py = boost::geometry::get<1>(point);
-            _min_x = std::min(px, _min_x);
-            _min_y = std::min(py, _min_y);
-            _max_x = std::max(px, _max_x);
-            _max_y = std::max(py, _max_y);
+        if (pair.second._ring) {
+            if (!pair.second._tessellated) {
+                for (const auto& point : pair.second._ring.value()) {
+                    double px = boost::geometry::get<0>(point);
+                    double py = boost::geometry::get<1>(point);
+                    _min_x = std::min(px, _min_x);
+                    _min_y = std::min(py, _min_y);
+                    _max_x = std::max(px, _max_x);
+                    _max_y = std::max(py, _max_y);
+                }
+            } else if (pair.second._tessellated_ring) {
+                for (const auto& ring : pair.second._tessellated_ring.value()) {
+                    for (const auto& point : pair.second._ring.value()) {
+                        double px = boost::geometry::get<0>(point);
+                        double py = boost::geometry::get<1>(point);
+                        _min_x = std::min(px, _min_x);
+                        _min_y = std::min(py, _min_y);
+                        _max_x = std::max(px, _max_x);
+                        _max_y = std::max(py, _max_y);
+                    }
+                }
+            }
         }
     }
 
     // iterate on linestrings
     for (const auto& pair : _geometries[GeometryType::LINESTRING]) {
-        for (const auto& point : pair.second._linestring.value()) {
-            double px = boost::geometry::get<0>(point);
-            double py = boost::geometry::get<1>(point);
-            _min_x = std::min(px, _min_x);
-            _min_y = std::min(py, _min_y);
-            _max_x = std::max(px, _max_x);
-            _max_y = std::max(py, _max_y);
+        if (pair.second._linestring) {
+            for (const auto& point : pair.second._linestring.value()) {
+                double px = boost::geometry::get<0>(point);
+                double py = boost::geometry::get<1>(point);
+                _min_x = std::min(px, _min_x);
+                _min_y = std::min(py, _min_y);
+                _max_x = std::max(px, _max_x);
+                _max_y = std::max(py, _max_y);
+            }
         }
     }
 }

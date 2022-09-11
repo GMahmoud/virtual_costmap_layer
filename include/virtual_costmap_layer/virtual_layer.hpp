@@ -41,6 +41,8 @@ struct Geometry {
     std::optional<rgk::core::Polygon> _polygon;
     std::optional<rgk::core::LineString> _linestring;
     std::optional<rgk::core::Ring> _ring;
+    std::optional<std::vector<rgk::core::Ring>> _tessellated_ring;
+    bool _tessellated = false;
 };
 
 struct PointInt {
@@ -187,9 +189,11 @@ class VirtualLayer : public costmap_2d::Layer {
     std::string _base_frame; // base frame of the robot by default "base_link"
     std::string _map_frame;  // map frame by default "map"
 
-    std::map<GeometryType, std::map<std::string, Geometry>> _geometries; // map of saved geometry element of virtual layet
+    std::map<GeometryType, std::map<std::string, Geometry>> _geometries; // map of saved geometry element of virtual layer
 
     double _min_x, _min_y, _max_x, _max_y; // cached map bounds
+
+    bool _enable_tessellation {false};
 
     ros::ServiceServer _add_server;    // RPC service to add element
     ros::ServiceServer _remove_server; // RPC service to remove element

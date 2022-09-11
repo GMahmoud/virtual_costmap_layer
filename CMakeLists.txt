@@ -88,10 +88,12 @@ catkin_package(INCLUDE_DIRS
 # Generate library and executables
 # ##############################################################################
 
-include_directories(${CMAKE_BINARY_DIR}/include ${catkin_INCLUDE_DIRS} include)
+add_subdirectory(third-party)
 
-add_library(virtual_layer src/virtual_layer.cpp)
-target_link_libraries(virtual_layer ${catkin_LIBRARIES} Boost::boost)
+include_directories(${CMAKE_BINARY_DIR}/include ${CMAKE_SOURCE_DIR}/third-party ${catkin_INCLUDE_DIRS} include)
+
+add_library(virtual_layer src/virtual_layer.cpp src/tessellator.cpp)
+target_link_libraries(virtual_layer ${catkin_LIBRARIES} Boost::boost third-party)
 add_dependencies(virtual_layer ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 add_executable(interface src/version.cpp)
