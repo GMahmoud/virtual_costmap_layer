@@ -3,11 +3,7 @@
 # ##############################################################################
 
 set(PACKAGE_NAME virtual_costmap_layer)
-IF(EXISTS ${CMAKE_SOURCE_DIR}/VERSION)
-    file(STRINGS ${CMAKE_SOURCE_DIR}/VERSION PROJECT_VERSION)
-ELSE()
-    file(STRINGS ${CMAKE_SOURCE_DIR}/${PACKAGE_NAME}/VERSION PROJECT_VERSION)
-ENDIF()
+file(STRINGS ${CMAKE_CURRENT_LIST_DIR}/VERSION PROJECT_VERSION)
 message(STATUS "Project version: ${PROJECT_VERSION}")
 
 # ##############################################################################
