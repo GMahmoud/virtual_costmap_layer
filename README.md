@@ -36,7 +36,7 @@ These form are represented with wkt data. Here is some example:
 Please note that `rings` are specific case of `polygons` in wkt data. _A ploygon contains an outer ring and multiple inner rings_. In our package, an element in the virtual layer with a ring format is filled. If you need to define a hallow ring form, you may use a polygon with no inner (see the empty M letter examples below)    
 
 #### Line string and polygon with inner
-<div align=right>
+<div align=left>
 <table>
   <tr>
     <td><img src="./demo/linestring.png" alt="LineString" width="400"/></a></td>
@@ -46,7 +46,7 @@ Please note that `rings` are specific case of `polygons` in wkt data. _A ploygon
 </div>
 
 #### Polygon with only outer and ring (M letter)
-<div align=right>
+<div align=left>
 <table>
     <tr>
     <td><img src="./demo/polygon_m_letter.png" alt="Polygon (M letter)" width="400"/></a></td>
