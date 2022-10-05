@@ -14,7 +14,7 @@ This is the main message used in the communication with the package, it has 4 po
    * LINESTRING
    * RING
    * POLYGON
-   * CIRCLE : :warning: __NOT SUPPORTED YET__ :warning:
+   * CIRCLE :warning: __NOT SUPPORTED YET__ :warning:
 
 These form are represented with wkt data. Here is some example:
 
@@ -33,8 +33,9 @@ These form are represented with wkt data. Here is some example:
 
 ```
 
-Please note that a rings are specific case of polygon in wkt data. A ploygon contains an outer ring and multiple inner rings. In our package, an element in the virtual layer that has a ring format is filled. If you need to define a hallow ring form, you may use a polygon with no inner (see the empty M letter example)    
+Please note that `rings` are specific case of `polygons` in wkt data. _A ploygon contains an outer ring and multiple inner rings_. In our package, an element in the virtual layer with a ring format is filled. If you need to define a hallow ring form, you may use a polygon with no inner (see the empty M letter examples below)    
 
+#### Line string and polygon with inner
 <div align=right>
 <table>
   <tr>
@@ -44,6 +45,7 @@ Please note that a rings are specific case of polygon in wkt data. A ploygon con
 </table>
 </div>
 
+#### Polygon with only outer and ring (M letter)
 <div align=right>
 <table>
     <tr>
@@ -53,7 +55,44 @@ Please note that a rings are specific case of polygon in wkt data. A ploygon con
 </table>
 </div>
 
-## ROS1 Node API
+Each form has a unique `uuid` and a `lifetime` duration in the layer. For more details, you can look at the [message definition](./msg/Form.msg)
 
+### Custom services
+
+4 services are added to this project: 
+
+* [AddElement](./srv/AddElement.srv)
+* [GetElement](./srv/GetElement.srv)
+* [GetElements](./srv/GetElements.srv)
+* [RemoveElement](./srv/RemoveElement.srv)
+
+Each one of these services will be described in the next section 
+
+## ROS1 Node API
 ### Services
+
+`~<name>/add (virtual_costmap_layer/AddElement)`
+Add a geometric form to the virtual costmap layer. It will return an uuid related to the form.
+
+`~<name>/remove (virtual_costmap_layer/RemoveElement)`
+Remove element form the layer with the uuid.
+
+`~<name>/get (virtual_costmap_layer/GetElement)`
+Get element from costmap layer by uuid.
+
+`~<name>/status (virtual_costmap_layer/GetElements)`
+Get all elements from costmap layer.
+
+`~<name>/clear (std_srvs/Trigger)`
+Delete all elements from costmap layer.
+
+### Parameters
+
+This layer has some specific configuration 
+
+`~<name>/enabled (boolean)` Parameter to enable the virtual layer on the costmap.
+
+`~<name>/tessellation/enabled (boolean)` Enable tessallator to fill geometric forms (rings). This process is added to support none convex forms. (See examples in the next section)  
+
+`~<name>/forms (string array)` List of elements that will be added to the layer at launch time. These forms are defined using wkt data. 
 
