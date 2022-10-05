@@ -96,3 +96,27 @@ This layer has some specific configuration
 
 `~<name>/forms (string array)` List of elements that will be added to the layer at launch time. These forms are defined using wkt data. 
 
+## Tutorial
+
+### Building project
+To build the package with your current catkin workspace, you can use one of these two commands
+
+```bash
+  catkin_make
+```
+or 
+
+```bash
+  catkin_make_isolated --force-cmake 
+```
+
+### Run sample
+
+A sample in which you can find a costmap layer with a static layer (from a static map) and a virtual layer is added to this package. 
+To run the sample, you can run this command after sourcing the package.
+
+```bash
+  roslaunch virtual_costmap_layer sample.launch
+```
+
+
