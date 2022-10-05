@@ -86,7 +86,8 @@ Get all elements from costmap layer.
 `~<name>/clear (std_srvs/Trigger)`
 Delete all elements from costmap layer.
 
-### Parameters
+### Parameters
+
 
 This layer has some specific configuration 
 
