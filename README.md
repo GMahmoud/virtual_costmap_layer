@@ -128,7 +128,7 @@ Here is some examples to show the tessellation process
 
   * Tessellation disabled
 
-<div align=right>
+<div align=left>
 <table>
   <tr>
     <td><img src="./demo/tessellation_disabled.png" alt="LineString" width="400"/></a></td>
@@ -139,7 +139,7 @@ Here is some examples to show the tessellation process
 
   * Tessellation intermediate step
     
-<div align=right>
+<div align=left>
 <table>
   <tr>
     <td><img src="./demo/tessellation_process.png" alt="LineString" width="400"/></a></td>
@@ -149,7 +149,7 @@ Here is some examples to show the tessellation process
 
   * Tessellation enabled
     
-<div align=right>
+<div align=left>
 <table>
   <tr>
     <td><img src="./demo/tessellation_enabled.png" alt="LineString" width="400"/></a></td>
