@@ -119,4 +119,40 @@ To run the sample, you can run this command after sourcing the package.
   roslaunch virtual_costmap_layer sample.launch
 ```
 
+### Tessellation
 
+The `rasterize` process can failed depending on the orientation of the element (none convex forms) in the map frame.
+To resolve this issue, a tessellation is added to the virtual layer. 
+
+Here is some examples to show the tessellation process
+
+  * Tessellation disabled
+
+<div align=right>
+<table>
+  <tr>
+    <td><img src="./demo/tessellation_disabled.png" alt="LineString" width="400"/></a></td>
+  </tr>
+</table>
+</div>
+
+
+  * Tessellation intermediate step
+    
+<div align=right>
+<table>
+  <tr>
+    <td><img src="./demo/tessellation_process.png" alt="LineString" width="400"/></a></td>
+  </tr>
+</table>
+</div>
+
+  * Tessellation enabled
+    
+<div align=right>
+<table>
+  <tr>
+    <td><img src="./demo/tessellation_enabled.png" alt="LineString" width="400"/></a></td>
+  </tr>
+</table>
+</div>
